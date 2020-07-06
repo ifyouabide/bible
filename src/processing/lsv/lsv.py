@@ -1,4 +1,4 @@
-"""Generates gen/lsv20.json."""
+"""Generates LSV-related resources in build/resources."""
 
 import json
 import os
@@ -105,7 +105,10 @@ def GetVerses(text, bk, ch):
 
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-input_path = os.path.join(script_dir, '..', '..', '..', 'third_party', 'lsv', 'lsv.txt')
+root_path = os.path.join(script_dir, '..', '..', '..')
+resources_path = os.path.join(root_path, 'build', 'resources')
+os.makedirs(resources_path, exist_ok=True)
+input_path = os.path.join(root_path, 'third_party', 'lsv', 'lsv.txt')
 content = open(input_path, 'rb').read().decode('utf-8').strip().replace('\r', '')
 
 books = content.split('=====')
@@ -113,6 +116,7 @@ out = {}
 for b in books:
 	name, contents = b.split('\n', 1)
 	bk = book_to_code[name.strip()]
+	out[bk] = {}
 
 	chs = contents.split('CHAPTER ')[1:]
 	for ch in chs:
@@ -120,7 +124,9 @@ for b in books:
 		chnum = chnum.strip()
 		vs = GetVerses(cc, bk, chnum)
 		for v in vs:
-			out[bk+chnum+':'+v[0]] = v[1]
+			out[bk][chnum+':'+v[0]] = v[1] + ('' if v != vs[-1] else '\n')
 
+	open(os.path.join(resources_path, 'lsv_%s.json' % bk), 'w').write(
+		json.dumps(out[bk], indent=0))
 
-open(os.path.join(script_dir, 'gen', 'lsv.json'), 'w').write(json.dumps(out, indent=0))
+open(os.path.join(resources_path, 'lsv.json'), 'w').write(json.dumps(out, indent=0))
