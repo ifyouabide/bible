@@ -13,6 +13,6 @@
     "build": "npm-run-all -p build-app-deps:* build-app:*",
     "http-server": "http-server",
     "serve": "http-server build -p 8000 -c-1",
-    "serve-dev": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- build -p 8080 -c-1\""
+    "serve-dev": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build -p 8090 -c-1\""
   }
 }

@@ -1,6 +1,6 @@
 # Book Codes
 
-See book_codes.json for the data. These codes are derived from the following simple algorithm.
+See books.js for the data. These codes are derived from the following simple algorithm.
 
 ## Algorithm to get code from traditional book name.
 

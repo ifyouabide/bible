@@ -1,9 +1,47 @@
 <html>
-	<head>
-		<meta charset="UTF-8">
-	</head>
-	<body style="margin:0px">
-		<div id="bible"></div>
-	</body>
-	<script src="bible.js" type="module"></script>
+<head>
+	<title>Bible (LSV)</title>
+	<meta charset="UTF-8">
+	<meta name="description" content="A free tool for searching and reading the Bible (LSV).">
+	<link rel="canonical" href="https://ifyouabide.org">
+	<script src="resources.js" type="module" async></script>
+	<script src="main.js" type="module" defer></script>
+	<style>
+		chapter-num {
+			display: block;
+
+			text-align: center;
+			font-size: 20px;
+			font-weight: bold;
+			user-select: none;
+		}
+		verse-num {
+			font-size: 10px;
+			padding-right: 2px;
+			padding-top: 2px;
+			vertical-align: text-top;
+			color: #999999;
+			user-select: none;
+		}
+		#readPanel {
+			min-width: 600px;
+			max-width: 600px;
+			max-height:100vh;
+
+			line-height: 24px;
+			padding-left: 30px;
+			padding-right: 30px;
+
+			overflow-y: scroll;
+			overflow-x: hidden;
+			font-size: 18px;
+			font-family: Calibri;
+			text-align: justify;
+		}
+	</style>
+</head>
+<body style="margin:0px">
+	<div id="readPanel"></div>
+</body>
+
 </html>
