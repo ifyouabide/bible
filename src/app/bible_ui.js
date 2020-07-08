@@ -56,20 +56,20 @@ function makeHtmlForRefRange(refRange) {
 
 	let bk = resources.bible[refRange.start.book];
 	let limit = refRange.end.seek()
-		? bk.refs[refRange.end.seek().chapterAndVerse] : bk.tokens.length;
-	return makeHtmlForTokenRange(bk, [bk.refs[refRange.start.chapterAndVerse], limit]);
+		? bk['refs'][refRange.end.seek().chapterAndVerse] : bk['tokens'].length;
+	return makeHtmlForTokenRange(bk, [bk['refs'][refRange.start.chapterAndVerse], limit]);
 }
 
 function makeHtmlForTokenRange(bk, [tkiStart, tkiEnd]) {
-	if (tkiStart < 0 || tkiStart >= bk.tokens.length) throw new Error('invalid tkiStart');
-	if (tkiEnd < tkiStart || tkiEnd > bk.tokens.length) throw new Error('invalid tkiEnd');
+	if (tkiStart < 0 || tkiStart >= bk['tokens'].length) throw new Error('invalid tkiStart');
+	if (tkiEnd < tkiStart || tkiEnd > bk['tokens'].length) throw new Error('invalid tkiEnd');
 
 	let h = [];
-	let startingTkiToRef = new Map(Object.entries(bk.refs).map(([k, v]) => [v, k]));
+	let startingTkiToRef = new Map(Object.entries(bk['refs']).map(([k, v]) => [v, k]));
 
 	for (let tki = tkiStart; tki < tkiEnd; tki++) {
 		if (startingTkiToRef.has(tki)) {
-			let ref = bible_utils.Ref.parse(bk.code + startingTkiToRef.get(tki));
+			let ref = bible_utils.Ref.parse(bk['code'] + startingTkiToRef.get(tki));
 			if (ref.startsChapter()) {
 				let ch = bible_utils.Ref.parseChapter(startingTkiToRef.get(tki));
 				h.push(`<chapter-num>CHAPTER ${ch}</chapter-num>`);
@@ -77,7 +77,7 @@ function makeHtmlForTokenRange(bk, [tkiStart, tkiEnd]) {
 			h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 		}
 
-		let tk = bk.tokens[tki];
+		let tk = bk['tokens'][tki];
 		if ('word' in tk) {
 			h.push('<w>' + tk['word'] + '</w>');
 		} else if ('layout' in tk) {

@@ -4,7 +4,7 @@ import * as resources from './resources.js';
 import {$id, exportDebug} from './utils.js';
 
 function addHistory(ref, opt_psg) {
-	let newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?ref=' + ref;
+	let newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?ref=' + ref;
 	if (opt_psg) {
 		newUrl += '&psg=' + opt_psg;
 	}
@@ -28,13 +28,6 @@ function getCurrentRef() {
 }
 
 function read(refStr) {
-	refStr = refStr.trim();
-
-	if (refStr.endsWith(':')) {
-		refStr = refStr.substr(0, ref.length - 1);
-	}
-	if (!refStr.length) return false;
-
 	let ref = bible_utils.Ref.parse(refStr);
 	if (!ref) return false;
 	ref.snapToExisting();
@@ -42,7 +35,17 @@ function read(refStr) {
 	return g_bookElem.show(bible_utils.RefRange.parse(ref.book), {scrollTo: ref});
 }
 
+let g_bookElem;
 exportDebug('bible_utils', bible_utils);
-let g_bookElem = bible_ui.createElement({id: 'book'});
-$id('readPanel').appendChild(g_bookElem);
-resources.startingBookPromise.then(() => read(resources.startingRef));
+
+function main() {
+	g_bookElem = bible_ui.createElement({id: 'book'});
+	$id('readPanel').appendChild(g_bookElem);
+	resources.startingBookPromise.then(() => read(resources.startingRef));
+}
+
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+	main();
+} else {
+	window.addEventListener('DOMContentLoaded', main);
+}

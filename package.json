@@ -9,7 +9,7 @@
   "scripts": {
     "build-app-deps:lsv": "python src/processing/lsv/lsv.py",
     "build-app:html": "cpy \"src/app/bible.html\" build",
-    "build-app:js": "google-closure-compiler src/app/*.js --js_output_file=build/bible.js --compilation_level=ADVANCED_OPTIMIZATIONS --language_out=ECMASCRIPT6",
+    "build-app:js": "google-closure-compiler src/app/*.js src/common/*.js --js_output_file=build/main.js --compilation_level=ADVANCED_OPTIMIZATIONS --language_out=ECMASCRIPT6",
     "build": "npm-run-all -p build-app-deps:* build-app:*",
     "http-server": "http-server",
     "serve": "http-server build -p 8000 -c-1",

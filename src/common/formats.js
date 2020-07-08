@@ -30,30 +30,30 @@ export const VerseTextToTokenConverter = {
 			if (inWord) {
 				word += c;
 			} else {
-				if (word.length) tokens.push({word: word});
+				if (word.length) tokens.push({'word': word});
 				word = '';
 
 				if (c == '[') {
 					if (next == '[') {
-						tokens.push({translation: {disputed: 'begin'}});
+						tokens.push({'translation': {'disputed': 'begin'}});
 						i++;
 					} else {
-						tokens.push({translation: {noOriginal: 'begin'}});
+						tokens.push({'translation': {'noOriginal': 'begin'}});
 					}
 				} else if (c == ']') {
 					if (next == ']') {
-						tokens.push({translation: {disputed: 'end'}});
+						tokens.push({'translation': {'disputed': 'end'}});
 						i++;
 					} else {
-						tokens.push({translation: {noOriginal: 'end'}});
+						tokens.push({'translation': {'noOriginal': 'end'}});
 					}
 				} else if (c == '|') {
 					if (next == '|') {
-						tokens.push({layout: {newLine: 1}});
+						tokens.push({'layout': {'newLine': 1}});
 						i++;
 					} else {
 						let inner = chars.slice(i+1).join('').split('|', 1)[0];
-						tokens.push({note: parseInt(inner)});
+						tokens.push({'note': parseInt(inner)});
 						i += inner.length + 1;
 					}
 				} else if (g_layoutChars.has(c)) {
@@ -64,27 +64,27 @@ export const VerseTextToTokenConverter = {
 						'\r': 'endLine',
 					}[c];
 					if (val) {
-						tokens.push({layout: val});
+						tokens.push({'layout': val});
 					} else {
 						if (c == '\t') {
 							if (next == '\t') {
-								tokens.push({layout: {newLine: 2}});
+								tokens.push({'layout': {'newLine': 2}});
 								i++;
 							} else {
-								tokens.push({layout: {newLine: 1}});
+								tokens.push({'layout': {'newLine': 1}});
 							}
 						} else {
 							throw new Error('Unknown layout char: ' + c);
 						}
 					}
 				} else if (g_punctuationChars.has(c)) {
-					tokens.push({punctuation: c});
+					tokens.push({'punctuation': c});
 				} else {
 					throw new Error('Unknown character: ' + c);
 				}
 			}
 		}
-		if (word.length) tokens.push({word: word});
+		if (word.length) tokens.push({'word': word});
 		return tokens;
 	},
 
@@ -96,9 +96,9 @@ export const VerseTextToTokenConverter = {
 			tokens.push(...VerseTextToTokenConverter.convertText(bkCode, text));
 		}
 		return {
-			code: bkCode,
-			tokens: tokens,
-			refs: refs,
+			'code': bkCode,
+			'tokens': tokens,
+			'refs': refs,
 		};
 	},
 

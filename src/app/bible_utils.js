@@ -61,7 +61,7 @@ export class Ref {
 		if (!book) return;
 		refPrefix = refPrefix.substr(book.length);
 
-		let refs = resources.bible[book].refs;
+		let refs = resources.bible[book]['refs'];
 		for (let ref in refs) {
 			if (ref.startsWith(refPrefix)) {
 				return Ref.parse(book + ref);
@@ -75,7 +75,7 @@ export class Ref {
 		if (!book) return;
 		refPrefix = refPrefix.substr(book.length);
 
-		let refs = resources.bible[book].refs;
+		let refs = resources.bible[book]['refs'];
 		let last;
 		for (let ref in refs) {
 			if (ref.startsWith(refPrefix)) {
@@ -98,7 +98,7 @@ export class Ref {
 	}
 
 	exists() {
-		return this.chapterAndVerse in resources.bible[this.book].refs;
+		return this.chapterAndVerse in resources.bible[this.book]['refs'];
 	}
 
 	/**
@@ -113,7 +113,7 @@ export class Ref {
 	snapToExisting() {
 		if (this.exists()) return this;
 
-		let bookRefs = resources.bible[this.book].refs;
+		let bookRefs = resources.bible[this.book]['refs'];
 		if (this.chapter < 1) {
 			return new Ref(this.book, Ref.parseChapter(bookRefs[0]), Ref.parseVerse(bookRefs[0]));
 		} else {
@@ -125,7 +125,7 @@ export class Ref {
 		}
 
 		let lastV;
-		for (let ref in resources.bible[this.book].refs) {
+		for (let ref in resources.bible[this.book]['refs']) {
 			if (Ref.parseChapter(ref) == this.chapter) {
 				let refV = Ref.parseVerse(ref);
 				if (refV > this.verse) {
@@ -146,7 +146,7 @@ export class Ref {
 			throw new Error('Cannot seek starting from non-existent ref');
 		}
 
-		let refs = Object.keys(resources.bible[this.book].refs);
+		let refs = Object.keys(resources.bible[this.book]['refs']);
 		let index = refs.indexOf(this.chapterAndVerse) + by;
 		if (index < 0 || index >= refs.length) return;
 		let ref = refs[index];
