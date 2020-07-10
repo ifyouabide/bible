@@ -379,13 +379,12 @@ export class RefRange {
 	}
 }
 
-export function seekTkiByWordCount(bkCode, tki, wc) {
-	let bk = resources.bible[bkCode];
+export function seekTkiByWordCount(unit, tki, wc) {
 	for (
 		tki = tki + Math.sign(wc);
-		tki > 0 && tki < bk['tokens'].length && wc;
+		tki > 0 && tki < unit['tokens'].length && wc;
 		tki += Math.sign(wc)) {
-		if ('word' in bk['tokens'][tki]) wc -= Math.sign(wc);
+		if ('word' in unit['tokens'][tki]) wc -= Math.sign(wc);
 	}
 	return tki;
 }

@@ -51,8 +51,8 @@ export function createElement({id} = {}) {
 
 		let pairs = tkis.sort((a, b) => a - b).map(tki =>
 			[
-				bible_utils.seekTkiByWordCount(bkCode, tki, -include),
-				bible_utils.seekTkiByWordCount(bkCode, tki, include),
+				bible_utils.seekTkiByWordCount(resources.bible[bkCode], tki, -include),
+				bible_utils.seekTkiByWordCount(resources.bible[bkCode], tki, include),
 			]
 		);
 		let collapsed = [];

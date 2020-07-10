@@ -4,7 +4,7 @@ import * as books from '../common/books.js';
 import * as query from './query.js';
 import * as resources from './resources.js';
 import * as result_ui from './result_ui.js';
-import {$id, exportDebug, onLoad} from './utils.js';
+import {$id, exportDebug, onLoad, client} from './utils.js';
 
 let g_about = `
 	<h3>About</h3>
@@ -21,49 +21,6 @@ let g_about = `
 	</div>
 `;
 
-let g_searchHelp = `
-	<h3>Search Help</h3>
-	<div style="margin-left:50px">
-		Examples:
-		<table>
-			<tr><th>Description</th><th>Query</th></tr>
-			<tr>
-				<td>Passages containing 'faith'</td>
-				<td><i>faith</i></td>
-			</tr>
-			<tr>
-				<td>Passages containing 'faith' exactly (still case-insensitive)</td>
-				<td><i>^faith$</i></td>
-			</tr>
-			<tr>
-				<td>Passages in the gospels and Revelation containing 'faith'</td>
-				<td><i>faith IN mt-jn re</i></td>
-			</tr>
-			<tr>
-				<td>Passages containing 'faith' and 'fear'</td>
-				<td><i>faith AND fear</i></td>
-			</tr>
-			<tr>
-				<td>Passages containing ('faith' or 'trust') and 'fear'</td>
-				<td><i>faith|trust AND fear</i></td>
-			</tr>
-		</table>
-		<br/>
-		Definition:
-		<div style="margin-left:30px">
-			<pre>search : expression ['IN' ref-ranges]</pre>
-			<pre>expression : word-matcher ['AND' expression]</pre>
-			<pre>word-matcher : <a href="https://en.wikipedia.org/wiki/Regular_expression">regex</a></pre>
-			<pre>ref-ranges : ref-range [ref-ranges]</pre>
-			<pre>ref-range : book-code ['-' book-code] </pre>
-		</div>
-		Book Codes:
-		<div style="margin-left:30px">
-			${books.codes.map(c => `<span>${c} </span>`).join('')}
-		</div>
-	</div>
-`;
-
 let g_shortcutHelp = `
 	<h3>Shortcuts</h3>
 	<div style="margin-left:50px">
@@ -77,7 +34,7 @@ let g_shortcutHelp = `
 
 let g_help = `
 	<div style="max-width:600px;margin-top:50px;">
-		${g_searchHelp}
+		${query.searchHelp}
 		${g_shortcutHelp}
 	</div>
 `;
@@ -95,13 +52,13 @@ function read(str, {highlightPassagePermanently = false} = {}) {
 
 	refRange = refRange.snapToExisting().limitToSingleBook();
 
-	let readRange = bible_utils.RefRange.parse(g_isFullVersion
+	let readRange = bible_utils.RefRange.parse(client.isFullVersion
 		? refRange.start.book : (refRange.start.book + refRange.start.chapter + ':'));
 
 	if (g_bookElem.show(readRange, {scrollToRef: refRange.start})) {
 		$id('bookSelect').selectedIndex = books.codes.indexOf(refRange.start.book);
 
-		if (g_isFullVersion) {
+		if (client.isFullVersion) {
 			g_bookElem.highlightPassage(
 				str.indexOf('-') != -1 ? refRange : refRange.start, highlightPassagePermanently);
 			if (g_results) g_bookElem.highlightHits(g_results.hits);
@@ -134,10 +91,6 @@ function isEditing() {
 let g_bookElem;
 let g_resultElem;
 let g_results;
-let g_isDesktop = navigator.userAgent.search(/iPad|iPhone|iPod|android|webOS/i) == -1;
-// Both iPad (safari) and moto e5 play (chrome) innerWidth of 980 and devicePixelRatio of 2.
-// TODO: consider using visualViewport.scale (.367 on moto e5 play).
-let g_isFullVersion = g_isDesktop || (window.innerWidth / window.devicePixelRatio > 900);
 
 onLoad().then(() => {
 	{
@@ -149,7 +102,7 @@ onLoad().then(() => {
 			g_bookElem.focus();
 		}, false);
 
-		if (g_isFullVersion) {
+		if (client.isFullVersion) {
 			$id('refInput').style.display = '';
 			$id('refInput').addEventListener('input', e => {
 				read(e.target.value);
@@ -179,7 +132,7 @@ onLoad().then(() => {
 		resources.startingBookPromise.then(() => read(resources.startingRef));
 	}
 
-	if (g_isFullVersion) {
+	if (client.isFullVersion) {
 		$id('searchPanel').style.display = '';
 		g_resultElem = result_ui.createElement({id: 'resultPanel'});
 		$id('searchPanel').insertBefore(g_resultElem, $id('searchPanel').firstChild);

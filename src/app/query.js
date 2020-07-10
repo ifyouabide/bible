@@ -3,6 +3,54 @@ import * as books from '../common/books.js';
 import * as resources from './resources.js';
 import {setIfUnset} from './utils.js';
 
+export const searchHelp = `
+	<h3>Search Help</h3>
+	<div style="margin-left:50px">
+		Examples:
+		<table>
+			<tr><th>Description</th><th>Query</th></tr>
+			<tr>
+				<td>Passages containing 'faith'</td>
+				<td><i>faith</i></td>
+			</tr>
+			<tr>
+				<td>Passages containing 'faith' exactly (still case-insensitive)</td>
+				<td><i>^faith$</i></td>
+			</tr>
+			<tr>
+				<td>Passages in the gospels and Revelation containing 'faith'</td>
+				<td><i>faith IN mt-jn re</i></td>
+			</tr>
+			<tr>
+				<td>Passages containing 'faith' and 'fear'</td>
+				<td><i>faith AND fear</i></td>
+			</tr>
+			<tr>
+				<td>Passages containing ('faith' or 'trust') and 'fear'</td>
+				<td><i>faith|trust AND fear</i></td>
+			</tr>
+		</table>
+		<br/>
+		Definition:
+		<div style="margin-left:30px;font-family:monospace;">
+			<div>search : expression ['IN' ref-ranges]</div>
+			<div>expression : word-matcher ['AND' expression]</div>
+			<div>word-matcher : <a href="https://en.wikipedia.org/wiki/Regular_expression">regex</a></div>
+			<div>ref-ranges : ref-range [ref-ranges]</div>
+			<div>ref-range : book-code ['-' book-code] </div>
+		</div>
+		<br/>
+		OT Book Codes:
+		<div style="margin-left:30px;">
+			${books.codes.slice(0, 39).map(c => `<span>${c} </span>`).join('')}
+		</div>
+		NT Book Codes:
+		<div style="margin-left:30px;">
+			${books.codes.slice(39).map(c => `<span>${c} </span>`).join('')}
+		</div>
+	</div>
+`;
+
 export function run(str) {
 	let {matchers, unitRefRanges} = parseQuery(str);
 

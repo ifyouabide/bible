@@ -1,6 +1,6 @@
 import * as books from '../common/books.js';
 import * as formats from '../common/formats.js';
-import {exportDebug} from './utils.js';
+import {exportDebug, client} from './utils.js';
 
 let g_resources = {};
 
@@ -18,7 +18,7 @@ export const startingRef = (() => {
 	let params = new URLSearchParams(window.location.search);
 	let ref = params.get('ref');
 	if (!ref || !books.codes.some(k => ref.startsWith(k))) {
-		ref = 'jn8:31';
+		ref = client.isFullVersion ? 'jn8:31' : 'jn1:1';
 	}
 	return ref;
 })();
