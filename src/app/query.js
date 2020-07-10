@@ -100,17 +100,18 @@ function search(unit, matchers, {pairDist = 30, groupDist = 150} = {}) {
 		pairings, groupDist,
 		p => Math.max(...p.map(h => h.wordIndex)), p => Math.min(...p.map(h => h.wordIndex)));
 
-	function supplementHit(h) {
+	function supplementedHit(h) {
+		h = Object.assign({book: unit['code']}, h);
 		h.wordIndex += unit.baseWordIndex || 0;
 		h.tokenIndex += unit.baseTokenIndex || 0;
-		return Object.assign(h, {book: unit['code']});
+		return h;
 	}
 
 	return {
 		passages: groups.map(grp => {;
 			return {
 				hits: Array.from(
-					new Set(grp.flat().map(supplementHit).map(JSON.stringify))).map(JSON.parse),
+					new Set(grp.flat().map(supplementedHit).map(JSON.stringify))).map(JSON.parse),
 				bounds: [
 					grp.flat().sort((a, b) => a.tokenIndex - b.tokenIndex)[0],
 					grp.flat().sort((a, b) => b.tokenIndex - a.tokenIndex)[0],
@@ -118,7 +119,7 @@ function search(unit, matchers, {pairDist = 30, groupDist = 150} = {}) {
 				book: unit['code'],
 			};
 		}),
-		hits: hitsPerMatcher.flat().map(supplementHit),
+		hits: hitsPerMatcher.flat().map(supplementedHit),
 	};
 }
 

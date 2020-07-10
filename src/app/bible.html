@@ -1,5 +1,12 @@
 <html>
 <head>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-172306160-1"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+		gtag('config', 'UA-172306160-1');
+	</script>
 	<title>The Holy Bible (LSV)</title>
 	<meta charset="UTF-8">
 	<meta name="description" content="A free tool for searching and reading the Bible (LSV).">
@@ -11,41 +18,56 @@
 			display: block;
 
 			text-align: center;
-			font-size: 20px;
 			font-weight: bold;
 			user-select: none;
 		}
 		verse-num {
 			position: relative;
-			top: -2px;
+			top: -.2rem;
 
-			font-size: 10px;
-			padding-right: 2px;
+			font-size: .7rem;
+			padding-right: .1rem;
 			vertical-align: text-top;
 			color: #999999;
 			user-select: none;
 		}
+		end-of-chapter {
+			display: inline-block;
+			min-width: .6rem;
+			min-height: .6rem;
+		}
 		new-line {
-			letter-spacing: -5px;
+			letter-spacing: -.4rem;
 			color: #999999;
 		}
-		.indent1 {
-			padding-left: 85px;
-			text-indent: -60px;
-			text-align: left;
+		w.highlight {
+			text-decoration: underline;
 		}
-		.indent2 {
-			padding-left: 85px;
-			text-indent: -35px;
-			text-align: left;
+		verse-num.highlight, end-of-chapter.highlight {
+			background-color: #44dd44;
+			border-radius: .3rem;
 		}
-		.indent8 {
-			padding-left: 85px;
-			text-indent: 115px;
-			text-align: left;
+		@keyframes temp-highlight {
+			from {
+				background-color: #44dd44;
+			}
+			to {
+				background-color: white;
+			}
+		}
+		verse-num.temp-highlight, end-of-chapter.temp-highlight {
+			border-radius: .3rem;
+			animation-name: temp-highlight;
+			animation-duration: 3s;
+			animation-timing-function: ease-in;
+			animation-fill-mode: forwards;
 		}
 	</style>
 	<style>
+		body, select, input, textarea {
+			font-family: Calibri;
+			font-size: 1.1rem;
+		}
 		#readPanel, #searchPanel {
 			display: flex;
 			flex-direction: column;
@@ -55,8 +77,7 @@
 		#readPanel {
 			display: flex;
 			flex-direction: column;
-			min-width: 650px;
-			max-width: 650px;
+			max-width: 40rem;
 		}
 		#searchPanel {
 			flex-grow: 1;
@@ -67,44 +88,42 @@
 
 		#book {
 			flex-grow: 1;
-			line-height: 26px;
-			padding: 30px;
+			line-height: 1.7rem;
+			padding-top: 1.2rem;
+			padding-left: 2rem;
+			padding-right: 2rem;
 
 			overflow-y: scroll;
 			overflow-x: hidden;
-			font-size: 18px;
-			font-family: Calibri;
 			text-align: justify;
 		}
 
 		#resultPanel {
 			flex-grow: 1;
-			line-height: 26px;
-			padding-left: 30px;
-			padding-right: 30px;
+			padding-left: 2rem;
+			padding-right: 2rem;
 
 			overflow-y: scroll;
 			overflow-x: hidden;
-			font-size: 16px;
-			font-family: Calibri;
 		}
 
 		.theme, .bar, select {
 			background-color: #883333;
-			font-size: 14px;
-			font-family: Ariel;
 			color: #f7f7f7;
 		}
 
 		.bar {
 			display: flex;
-			box-shadow: 0px 2px #999999;
+			box-shadow: 0rem .1rem #999999;
+			user-select: none;
 		}
 
 		select {
 			cursor: pointer;
 			border: none;
-			padding: 5px;
+			appearance: none;
+			-webkit-appearance: none;
+			-moz-appearance: none;
 		}
 
 		select:hover, select:focus {
@@ -120,46 +139,57 @@
 			text-decoration: none;
 		}
 		table, td, th {
-			border: 1px solid #dddddd;
+			border: .1rem solid #dddddd;
 			border-collapse: collapse;
 		}
 		td, th {
-			padding: 10px;
+			padding: .5rem;
 		}
 
 		.ref-range {
-			font-size: 18px;
 			color: #AA0000;
 			font-weight: bold;
 			cursor: pointer;
 			text-decoration: none;
-			margin-right: 5px;
-		}
-
-		.highlight {
-			text-decoration: underline;
+			margin-right: .3rem;
 		}
 	</style>
 </head>
-<body style="margin:0px;display:flex;">
+<body style="margin:0rem;display:flex;justify-content:center;">
 	<div id="readPanel">
-		<div class="bar">
-			<select id="bookSelect" style="padding-left:30px;user-select:none;"></select>
-			<span style="text-align:center;flex-grow:1;padding:8px;user-select:none;">
-				<a
-					href="https://www.lsvbible.com" class="theme" target="_blank"
-					style="text-decoration:none">LSV
-				</a>
+		<div class="bar" style="justify-content:space-between;min-height:2rem;">
+			<select id="bookSelect" style="margin-left:2rem;width:10rem;height:2rem;"></select>
+			<a
+				href="https://www.lsvbible.com" class="theme" target="_blank"
+				style="padding-top:.3rem;">LSV
+			</a>
+			<span style="display:inline-block;margin-right:2rem;width:10rem">
+				<input
+					id="refInput" type="text" class="theme" maxlength="9"
+					style="
+						display:none;
+						float:right;
+						width:4rem;
+						height:2rem;
+						text-align:right;
+					">
+				<select
+					id="chapterSelect"
+					style="
+						display:none;
+						float:right;
+						height:2rem;
+						padding-right:2rem;
+						text-align:right;
+					"></select>
 			</span>
-			<input
-				id="refInput" type="text" class="theme" maxlength="9"
-				style="padding:6px;padding-right:45px;float:right;text-align:right;width:150px;">
 		</div>
 	</div>
-	<div id="searchPanel">
+	<div id="searchPanel" style="display:none;">
 		<div class="bar" style="display:flex;">
 			<input id="helpButton" type="button" value="Help">
-			<textarea id="searchBox" style="flex-grow:1;min-height:48px;resize:vertical;"></textarea>
+			<input id="clearButton" type="button" value="Clear">
+			<textarea id="searchBox" style="flex-grow:1;min-height:3rem;resize:vertical;"></textarea>
 			<input id="searchButton" type="button" value="Search">
 		</div>
 	</div>

@@ -30,13 +30,14 @@ export function createElement({id} = {}) {
 		//let isRange = refRangeStr.indexOf('-') != -1;
 		//let psg = opts.psg || (opts.highlight || isRange ? refRangeStr : null);
 
-		if (elem.getAttribute('data-refrange') != refRange.toString()) {			
+		if (elem.getAttribute('data-ref-range') != refRange.toString()) {			
 			let timer = new Timer();
 			let html = makeHtmlForRefRange(refRange);
 			ifDebug(() => console.log('show [built]', refRange.toString(), timer.mark()));
 			contentElem.innerHTML = html;
 			ifDebug(() => console.log('show [parsed]', refRange.toString(), timer.mark()));
-			elem.setAttribute('data-refrange', refRange.toString());
+			elem.setAttribute('data-ref-range', refRange.toString());
+			elem.setAttribute('data-book', refRange.start.book);
 			elem.appendChild(spacingElem);
 		}
 
@@ -73,14 +74,47 @@ export function createElement({id} = {}) {
 			.map(p => makeHtmlForTokenRange(
 				resources.bible[bkCode], p, {headings: false, verseNums: false}))
 			.join('...') + '...';
+		elem.setAttribute('data-book', refRange.start.book);
 		return true;
 	};
-	elem.highlight = function(tkis) {
-		Array.from(elem.querySelectorAll('w')).forEach(e => e.classList.remove('highlight'));
-		tkis.forEach(tki => {
-			elem.querySelector(`w[data-tki="${tki}"]`).classList.add('highlight');
+	elem.highlightHits = function(hits) {
+		Array.from(elem.querySelectorAll('w.highlight'))
+			.forEach(e => e.classList.remove('highlight'));
+		hits.filter(h => h.book == elem.getAttribute('data-book')).forEach(h => {
+			let tokenElem = elem.getElemForToken(h.tokenIndex);
+			if (tokenElem) tokenElem.classList.add('highlight');
 		});
 	};
+	elem.highlightPassage = function(refOrRange, highlightPassagePermanently = true) {
+		let refRange = refOrRange instanceof bible_utils.Ref
+			? new bible_utils.RefRange(refOrRange, refOrRange) : refOrRange;
+		if (!refRange.isWithinSingleBook() || !refRange.exists()) return false;
+
+		Array.from(elem.querySelectorAll('verse-num.highlight, end-of-chapter.highlight'))
+			.forEach(e => e.classList.remove('highlight'));
+		Array.from(elem.querySelectorAll('verse-num.temp-highlight, end-of-chapter.temp-highlight'))
+			.forEach(e => e.classList.remove('temp-highlight'));
+
+		let highlightClass = highlightPassagePermanently ? 'highlight' : 'temp-highlight';
+		// Need to do this asynchronously so that removing and re-adding a temp-highlight works.
+		window.setTimeout(() => {
+			elem.getElemForVerseNum(refRange.start).classList.add(highlightClass);
+			if (refRange.end.endsChapter()) {
+				elem.getElemForEndOfChapter(refRange.end.chapter).classList.add(highlightClass);
+			} else {
+				elem.getElemForVerseNum(refRange.end.seek()).classList.add(highlightClass);
+			}
+		}, 0);
+	};
+	elem.getElemForToken = function(tki) {
+		return elem.querySelector(`w[data-tki="${tki}"]`);
+	};
+	elem.getElemForVerseNum = function(ref) {
+		return elem.querySelector(`verse-num[name="${ref}"]`);
+	};
+	elem.getElemForEndOfChapter = function(ch) {
+		return elem.querySelector(`end-of-chapter[name="${ch}"]`);
+	}
 	return elem;
 }
 
@@ -122,11 +156,14 @@ function makeHtmlForTokenRange(
 			if (headings) {
 				if (ri == 0 || ref.chapter != bible_utils.Ref.parseChapter(refs[ri-1][0])) {
 					if (isPsalm) {
-						if (ref.chapter != 1) {
+						if (ref.chapter != 1 && tki != tkiStart) {
+							h.push(`<end-of-chapter name="${ref.chapter - 1}"></end-of-chapter>`);
 							h.push('<br/>'.repeat(5));
 						}
 						h.push(`<psalm-num>PSALM ${ref.chapter}</psalm-num>`);
 					} else {
+						if (ref.chapter != 1 && tki != tkiStart)
+							h.push(`<end-of-chapter name="${ref.chapter - 1}"></end-of-chapter>`);
 						h.push(`<chapter-num>CHAPTER ${ref.chapter}</chapter-num>`);
 					}
 				}
@@ -136,12 +173,12 @@ function makeHtmlForTokenRange(
 			if (verseNums) {
 				if (isPsalm) {
 					if (ref.verse == 0) {
-						h.push(`<verse-num name="${ref}"}></verse-num><verse-num name="${ref.seek()}"}>1</verse-num>`);
+						h.push(`<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek()}">1</verse-num>`);
 					} else if (ref.verse != 1 || ri == 0 || bible_utils.Ref.parseVerse(refs[ri-1][0]) != 0) {
-						h.push(`<verse-num name="${ref}"}>${ref.verse}</verse-num>`);
+						h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 					}
 				} else {
-					h.push(`<verse-num name="${ref}"}>${ref.verse}</verse-num>`);
+					h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 				}
 			}
 		}
@@ -164,6 +201,9 @@ function makeHtmlForTokenRange(
 				h.push(tk['translation']['disputed'] == 'begin' ? '[[' : ']]');
 			}
 		}
+	}
+	if (headings) {
+		h.push(`<end-of-chapter name="${bible_utils.Ref.parseChapter(refs[ri][0])}"></end-of-chapter>`);
 	}
 	return h.join('');
 }
@@ -192,31 +232,3 @@ function scrollTo(elem, childElem) {
 	elem.scrollTop += space + fontSize - offFromTopline;
 }
 exportDebug('scrollTo', scrollTo);
-
-function scrollByLine(elem, dir) {
-	var lineHeight = getContainerLineHeight(elem);
-	var fontSize = parseInt(getComputedStyle(elem).fontSize);
-	var space = (lineHeight - fontSize) / 2;
-
-	var offFromTopline = (elem.scrollTop + elem.offsetHeight * .3 - elem.firstChild.offsetTop) % lineHeight;
-	if (dir == 1) {
-		var pastMidway = offFromTopline > space + fontSize / 2;
-		return -offFromTopline + space + fontSize + (pastMidway ? lineHeight : 0);
-	}
-	return -offFromTopline - space;
-}
-
-function scrollByPage(elem, dir) {
-	var lineHeight = getContainerLineHeight(elem);
-	var fontSize = parseInt(getComputedStyle(elem).fontSize);
-	var space = (lineHeight - fontSize) / 2;
-
-	if (dir == 1) {
-		var offFromTopline = (elem.scrollTop - elem.firstChild.offsetTop + elem.offsetHeight) % lineHeight;
-		var bottomReadable = offFromTopline > space + fontSize - 2;
-		return elem.offsetHeight - offFromTopline + (bottomReadable ? lineHeight : 0);
-	}
-	var offFromTopline = (elem.scrollTop - elem.firstChild.offsetTop) % lineHeight;
-	var topUnreadable = offFromTopline > space + 2;
-	return -elem.offsetHeight - offFromTopline + (topUnreadable ? lineHeight : 0);
-}

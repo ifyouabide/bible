@@ -68,8 +68,6 @@ let g_shortcutHelp = `
 	<h3>Shortcuts</h3>
 	<div style="margin-left:50px">
 		<table>
-			<tr><td>Go to the next/previous line</td><td><i>j</i> (next) <i>k</i> (previous)</td></tr>
-			<tr><td>Go to the next/previous chapter</td><td><i>n</i> (next) <i>p</i> (previous)</td></tr>
 			<tr><td>Focus the reference box</td><td><i>/</i></td></tr>
 			<tr><td>Focus the search box</td><td><i>?</i></td></tr>
 			<tr><td>Perform a search</td><td><i>shift+Enter</i> (when the search box is focused)</td></tr>
@@ -91,15 +89,31 @@ let g_welcome = `
 	</div>
 `;
 
-function read(refStr) {
-	let ref = bible_utils.Ref.parse(refStr);
-	if (!ref) return false;
-	ref = ref.snapToExisting();
+function read(str, {highlightPassagePermanently = false} = {}) {
+	let refRange = bible_utils.RefRange.parse(str);
+	if (!refRange) return false;
 
-	if (g_bookElem.show(bible_utils.RefRange.parse(ref.book), {scrollToRef: ref})) {
-		$id('bookSelect').selectedIndex = books.codes.indexOf(ref.book);
-		if ($id('refInput') != document.activeElement) {
-			$id('refInput').value = ref.toString();
+	refRange = refRange.snapToExisting().limitToSingleBook();
+
+	let readRange = bible_utils.RefRange.parse(g_isFullVersion
+		? refRange.start.book : (refRange.start.book + refRange.start.chapter + ':'));
+
+	if (g_bookElem.show(readRange, {scrollToRef: refRange.start})) {
+		$id('bookSelect').selectedIndex = books.codes.indexOf(refRange.start.book);
+
+		if (g_isFullVersion) {
+			g_bookElem.highlightPassage(
+				str.indexOf('-') != -1 ? refRange : refRange.start, highlightPassagePermanently);
+			if (g_results) g_bookElem.highlightHits(g_results.hits);
+			if ($id('refInput') != document.activeElement) {
+				$id('refInput').value = refRange.start.toString();
+			}
+		} else {
+			let chapterCount = bible_utils.Ref.parseChapter(
+				Object.keys(resources.bible[refRange.start.book]['refs']).slice(-1)[0]);
+			$id('chapterSelect').innerHTML = Array.from(Array(chapterCount), (_, i) => i + 1)
+				.map(ch => `<option name="${refRange.start.book}${ch}">${ch}</option>`);
+			$id('chapterSelect').selectedIndex = refRange.start.chapter - 1;
 		}
 		return true;
 	}
@@ -107,9 +121,10 @@ function read(refStr) {
 }
 
 function runQuery() {
-	let results = query.run($id('searchBox').value);
-	if (!results) return;
-	g_resultElem.show(results);
+	g_results = query.run($id('searchBox').value);
+	if (!g_results) return;
+	g_resultElem.show(g_results);
+	g_bookElem.highlightHits(g_results.hits);
 }
 
 function isEditing() {
@@ -118,6 +133,11 @@ function isEditing() {
 
 let g_bookElem;
 let g_resultElem;
+let g_results;
+let g_isDesktop = navigator.userAgent.search(/iPad|iPhone|iPod|android|webOS/i) == -1;
+// Both iPad (safari) and moto e5 play (chrome) innerWidth of 980 and devicePixelRatio of 2.
+// TODO: consider using visualViewport.scale (.367 on moto e5 play).
+let g_isFullVersion = g_isDesktop || (window.innerWidth / window.devicePixelRatio > 900);
 
 onLoad().then(() => {
 	{
@@ -126,32 +146,51 @@ onLoad().then(() => {
 			.join('');
 		$id('bookSelect').addEventListener('change', e => {
 			read(books.codes[e.target.selectedIndex]);
+			g_bookElem.focus();
 		}, false);
 
-		$id('refInput').addEventListener('input', e => {
-			read(e.target.value);
-		});
-		$id('refInput').addEventListener('keydown', e => {
-			if (e.key == 'Enter') {
+		if (g_isFullVersion) {
+			$id('refInput').style.display = '';
+			$id('refInput').addEventListener('input', e => {
+				read(e.target.value);
+			});
+			$id('refInput').addEventListener('keydown', e => {
+				if (e.key == 'Enter') {
+					g_bookElem.focus();
+				}
+			});
+			window.addEventListener('keydown', e => {
+				if (!isEditing() && e.key == '/') {
+					$id('refInput').focus();
+					$id('refInput').select();
+					e.preventDefault();
+				}
+			});
+		} else {
+			$id('chapterSelect').style.display = '';
+			$id('chapterSelect').addEventListener('change', e => {
+				read(e.target.children[e.target.selectedIndex].getAttribute('name'));
 				g_bookElem.focus();
-			}
-		});
-		window.addEventListener('keyup', e => {
-			if (!isEditing() && e.key == '/') {
-				$id('refInput').focus();
-				$id('refInput').select();
-			}
-		});
+			});
+		}
 
 		g_bookElem = bible_ui.createElement({id: 'book'});
 		$id('readPanel').appendChild(g_bookElem);
 		resources.startingBookPromise.then(() => read(resources.startingRef));
 	}
 
-	{
+	if (g_isFullVersion) {
+		$id('searchPanel').style.display = '';
 		g_resultElem = result_ui.createElement({id: 'resultPanel'});
 		$id('searchPanel').insertBefore(g_resultElem, $id('searchPanel').firstChild);
 		g_resultElem.showHtml(g_welcome);
+
+		$id('helpButton').addEventListener('click', () => g_resultElem.showHtml(g_help));
+		$id('clearButton').addEventListener('click', () => {
+			g_results = null;
+			g_resultElem.showHtml('');
+			g_bookElem.highlightHits([]);
+		});
 
 		$id('searchButton').addEventListener('click', runQuery);
 		$id('searchBox').addEventListener('keydown', e => {
@@ -167,13 +206,11 @@ onLoad().then(() => {
 				$id('searchBox').select();
 			}
 		});
-
-		$id('helpButton').addEventListener('click', () => g_resultElem.showHtml(g_help));
 	}
 
 	window.addEventListener('click', e => {
 		if (e.target.classList.contains('ref-range')) {
-			read(e.target.innerText);	
+			read(e.target.innerText, {highlightPassagePermanently: true});	
 		}
 	});
 });
