@@ -1,12 +1,13 @@
 <html>
 <head>
-	<title>Bible (LSV)</title>
+	<title>The Holy Bible (LSV)</title>
 	<meta charset="UTF-8">
 	<meta name="description" content="A free tool for searching and reading the Bible (LSV).">
 	<link rel="canonical" href="https://ifyouabide.org">
+	<link rel="icon" type="image/png" href="favicon.ico">
 	<script src="main.js" type="module" async></script>
 	<style>
-		chapter-num {
+		chapter-num, psalm-num {
 			display: block;
 
 			text-align: center;
@@ -15,21 +16,59 @@
 			user-select: none;
 		}
 		verse-num {
+			position: relative;
+			top: -2px;
+
 			font-size: 10px;
 			padding-right: 2px;
-			padding-top: 2px;
 			vertical-align: text-top;
 			color: #999999;
 			user-select: none;
 		}
+		new-line {
+			letter-spacing: -5px;
+			color: #999999;
+		}
+		.indent1 {
+			padding-left: 85px;
+			text-indent: -60px;
+			text-align: left;
+		}
+		.indent2 {
+			padding-left: 85px;
+			text-indent: -35px;
+			text-align: left;
+		}
+		.indent8 {
+			padding-left: 85px;
+			text-indent: 115px;
+			text-align: left;
+		}
+	</style>
+	<style>
+		#readPanel, #searchPanel {
+			display: flex;
+			flex-direction: column;
+			min-height: 100vh;
+			max-height: 100vh;
+		}
 		#readPanel {
-			min-width: 600px;
-			max-width: 600px;
-			max-height:100vh;
+			display: flex;
+			flex-direction: column;
+			min-width: 650px;
+			max-width: 650px;
+		}
+		#searchPanel {
+			flex-grow: 1;
+		}
+		#resultPanel {
+			flex-grow: 1;
+		}
 
-			line-height: 24px;
-			padding-left: 30px;
-			padding-right: 30px;
+		#book {
+			flex-grow: 1;
+			line-height: 26px;
+			padding: 30px;
 
 			overflow-y: scroll;
 			overflow-x: hidden;
@@ -37,10 +76,93 @@
 			font-family: Calibri;
 			text-align: justify;
 		}
+
+		#resultPanel {
+			flex-grow: 1;
+			line-height: 26px;
+			padding-left: 30px;
+			padding-right: 30px;
+
+			overflow-y: scroll;
+			overflow-x: hidden;
+			font-size: 16px;
+			font-family: Calibri;
+		}
+
+		.theme, .bar, select {
+			background-color: #883333;
+			font-size: 14px;
+			font-family: Ariel;
+			color: #f7f7f7;
+		}
+
+		.bar {
+			display: flex;
+			box-shadow: 0px 2px #999999;
+		}
+
+		select {
+			cursor: pointer;
+			border: none;
+			padding: 5px;
+		}
+
+		select:hover, select:focus {
+			color: #b03333;
+			background-color: white;
+		}
+
+		input[type="text"] {
+			border: none;
+		}
+
+		a {
+			text-decoration: none;
+		}
+		table, td, th {
+			border: 1px solid #dddddd;
+			border-collapse: collapse;
+		}
+		td, th {
+			padding: 10px;
+		}
+
+		.ref-range {
+			font-size: 18px;
+			color: #AA0000;
+			font-weight: bold;
+			cursor: pointer;
+			text-decoration: none;
+			margin-right: 5px;
+		}
+
+		.highlight {
+			text-decoration: underline;
+		}
 	</style>
 </head>
-<body style="margin:0px">
-	<div id="readPanel"></div>
+<body style="margin:0px;display:flex;">
+	<div id="readPanel">
+		<div class="bar">
+			<select id="bookSelect" style="padding-left:30px;user-select:none;"></select>
+			<span style="text-align:center;flex-grow:1;padding:8px;user-select:none;">
+				<a
+					href="https://www.lsvbible.com" class="theme" target="_blank"
+					style="text-decoration:none">LSV
+				</a>
+			</span>
+			<input
+				id="refInput" type="text" class="theme" maxlength="9"
+				style="padding:6px;padding-right:45px;float:right;text-align:right;width:150px;">
+		</div>
+	</div>
+	<div id="searchPanel">
+		<div class="bar" style="display:flex;">
+			<input id="helpButton" type="button" value="Help">
+			<textarea id="searchBox" style="flex-grow:1;min-height:48px;resize:vertical;"></textarea>
+			<input id="searchButton" type="button" value="Search">
+		</div>
+	</div>
 </body>
 
 </html>

@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 
 book_to_code = {
 	'GENESIS': 'ge',
@@ -72,8 +73,23 @@ book_to_code = {
 	'REVELATION': 're',
 }
 
+PSALMS_WITH_PRESCRIPTS = [
+	3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+	22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38,
+	39, 40, 41, 42, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
+	56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 72,
+	73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
+	89, 90, 92, 98, 100, 101, 102, 103, 108, 109, 110, 120, 121, 122,
+	123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 138,
+	139, 140, 141, 142, 143, 144, 145
+] 
+
 def GetVerses(text, bk, ch):
-	text = ' ' + ' '.join(text.strip().split('\n')).replace('  ', ' ').replace('  ', ' ').replace('  ', ' ').strip()
+	for i in range(10):
+		text = text.replace('  ', ' ')
+	lines = text.strip().split('\n')
+	text = ' ' + ''.join(lines)
+
 	vs = []
 	start = 0
 	missing = []
@@ -100,7 +116,22 @@ def GetVerses(text, bk, ch):
 	vs2 = []
 	for i in range(1, len(vs) + 1):
 		end = vs[i][1] if (i < len(vs)) else 10000000
-		vs2 += [(str(vs[i-1][0]), text[vs[i-1][2]:end])]
+		content = text[vs[i-1][2]:end]
+		if not content.endswith('—') and not content.endswith('[') and i != len(vs):
+			content += ' '
+		if bk == 'ps' and vs[i-1][0] == 1:
+			if int(ch) in PSALMS_WITH_PRESCRIPTS:
+				sentences = content.split('||')[0].split('.')
+				for si in range(len(sentences)):
+					if re.search(r'[a-z]', sentences[si]):
+						prescript = '.'.join(sentences[:si]) + '. '
+						content = content[len(prescript):]
+						vs2 += [('0', prescript)]
+						break
+				else:
+					moo()
+
+		vs2 += [(str(vs[i-1][0]), content)]
 	return vs2
 
 
@@ -124,9 +155,10 @@ for b in books:
 		chnum = chnum.strip()
 		vs = GetVerses(cc, bk, chnum)
 		for v in vs:
-			out[bk][chnum+':'+v[0]] = v[1] + ('' if v != vs[-1] else '\n')
+			out[bk][chnum+':'+v[0]] = v[1]
 
-	open(os.path.join(resources_path, 'lsv_%s.json' % bk), 'w').write(
-		json.dumps(out[bk], indent=0))
+	open(os.path.join(resources_path, 'lsv_%s.json' % bk), 'wb').write(
+		json.dumps(out[bk], indent=0, ensure_ascii=False).encode('utf8'))
 
-open(os.path.join(resources_path, 'lsv.json'), 'w').write(json.dumps(out, indent=0))
+open(os.path.join(resources_path, 'lsv.json'), 'wb').write(
+	json.dumps(out, indent=0, ensure_ascii=False).encode('utf8'))

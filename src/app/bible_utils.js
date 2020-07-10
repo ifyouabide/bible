@@ -41,7 +41,7 @@ export class Ref {
 
 	/** Returns the chapter or undefined if missing or not positive. */
 	static parseChapter(str) {
-		let index = str.search(/\d+[:$]/);
+		let index = str.search(/\d+(:|$)/);
 		if (index == -1) return;
 		let ch = parseInt(str.slice(index).split(':', 1)[0]);
 		if (!isNaN(ch) && ch > 0) return ch;
@@ -87,6 +87,19 @@ export class Ref {
 		return Ref.parse(book + last);
 	}
 
+	static containingTki(book, tki) {
+		let refAndTkiPairs = Object.entries(resources.bible[book]['refs']);
+		let ri = 0;
+		for (; ri < refAndTkiPairs.length; ri++) {
+			if (refAndTkiPairs[ri][1] > tki) {
+				break;
+			}
+		}
+		ri--;
+		return new Ref(
+			book, Ref.parseChapter(refAndTkiPairs[ri][0]), Ref.parseVerse(refAndTkiPairs[ri][0]));
+	}
+
 	constructor(book, chapter, verse) {
 		if (!books.codeSet.has(book)) {
 			throw new Error('Invalid book: ' + book);
@@ -117,10 +130,10 @@ export class Ref {
 		if (this.chapter < 1) {
 			return new Ref(this.book, Ref.parseChapter(bookRefs[0]), Ref.parseVerse(bookRefs[0]));
 		} else {
-			let lastRef = bookRefs.slice(-1)[0];
+			let lastRef = Object.keys(bookRefs).slice(-1)[0];
 			let lastCh = Ref.parseChapter(lastRef);
 			if (this.chapter > lastCh) {
-				return new Ref(this.book, Ref.parseChapter(lastRef), Ref.parseVerse(lastRef));
+				return new Ref(this.book, lastCh, Ref.parseVerse(lastRef));
 			}
 		}
 
@@ -174,6 +187,18 @@ export class Ref {
 
 	startsChapter() {
 		return Ref.firstWithPrefix(this.book + this.chapter + ':').verse == this.verse;
+	}
+
+	endsChapter() {
+		return Ref.lastWithPrefix(this.book + this.chapter + ':').verse == this.verse;
+	}
+
+	startsBook() {
+		return Ref.firstWithPrefix(this.book).equals(this);
+	}
+
+	endsBook() {
+		return Ref.lastWithPrefix(this.book).equals(this);
 	}
 
 	toString() {
@@ -252,6 +277,38 @@ export class RefRange {
 		return Ref.lastWithPrefix(book + num + ':');
 	}
 
+	/**
+	 * Returns an ordered list of non-overlapping existing ref ranges, or undefined if invalid.
+	 */
+	static parseMultiple(str, delimiter = ' ') {
+		let original = str.trim().split(delimiter).map(RefRange.parse);
+		if (original.some(rr => !rr)) return;
+
+		return RefRange.makeNonTouching(original);
+	}
+
+	static makeNonTouching(refRanges) {
+		let byStart = refRanges.sort((a, b) => a.start.order(b.start));
+		let out = [];
+		while (byStart.length) {
+			let left = byStart.splice(0, 1)[0];
+			let right = byStart[0];
+			if (right && left.touches(right)) {
+				left = left.union(right);
+				byStart[0] = left;
+			} else {
+				out.push(left);
+			}
+		}
+		return out;
+	}
+
+	static containingTkis(book, tkis) {
+		let sorted = tkis.sort((a, b) => a - b);
+		return new RefRange(
+			Ref.containingTki(book, sorted[0]), Ref.containingTki(book, sorted.slice(-1)[0]));
+	}
+
 	constructor(start, end) {
 		this.start = start;
 		this.end = end;
@@ -297,4 +354,38 @@ export class RefRange {
 	exists() {
 		return this.start.exists() && this.end.exists();
 	}
+
+	/** Returns true if these overlap or if there are no verses in between them. */
+	touches(other) {
+		let byStart = [this.snapToExisting(), other.snapToExisting()]
+			.sort((a, b) => a.start.order(b.start));
+		if (byStart[0].end.order(byStart[1].start) < 1) return true;
+
+		if (byStart[0].end.seek() && byStart[0].end.seek().equals(byStart[1].start))
+			return true;
+
+		if (byStart[0].end.endsBook() && byStart[1].start.startsBook()
+			&& books.codes.indexOf(byStart[0].end.book) + 1
+				== books.codes.indexOf(byStart[1].start.book))
+			return true;
+
+		return false;
+	}
+
+	union(other) {
+		return new RefRange(
+			this.start.order(other.start) < 0 ? this.start : other.start,
+			this.end.order(other.end) < 0 ? this.end : other.end);
+	}
+}
+
+export function seekTkiByWordCount(bkCode, tki, wc) {
+	let bk = resources.bible[bkCode];
+	for (
+		tki = tki + Math.sign(wc);
+		tki > 0 && tki < bk['tokens'].length && wc;
+		tki += Math.sign(wc)) {
+		if ('word' in bk['tokens'][tki]) wc -= Math.sign(wc);
+	}
+	return tki;
 }
