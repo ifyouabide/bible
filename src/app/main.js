@@ -12,12 +12,12 @@ let g_about = `
 		The Literal Standard Version of The Holy Bible is a registered copyright of
 		Covenant Press and the Covenant Christian Coalition (© 2020).
 		The LSV has a permissive copyright: all non-commercial use is permissible as long as the text is unaltered.
-		See the <a href="https://www.lsvbible.com">LSV website</a> for more details.
+		See the <a target="_blank" rel="noopener" href="https://www.lsvbible.com">LSV website</a> for more details.
 		This website is not	affiliated with Covenant Press or the CCC.
 		<br/><br/>
 		Questions/comments? Email <a href="mailto:ifyouabide@googlegroups.com">ifyouabide@googlegroups.com</a>
 		<br/>
-		We are an open source project: <a target="_blank" href="https://github.com/kenkania/bible">code</a>
+		We are an open source project: <a target="_blank" rel="noopener" href="https://github.com/kenkania/bible">code</a>
 	</div>
 `;
 
