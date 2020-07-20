@@ -1,0 +1,103 @@
+/************ Bible CSS ************/
+chapter-num, psalm-num {
+	display: block;
+
+	text-align: center;
+	font-weight: bold;
+	user-select: none;
+}
+verse-num {
+	position: relative;
+	top: -.2rem;
+
+	font-size: .7rem;
+	padding-right: .1rem;
+	vertical-align: text-top;
+	color: #999999;
+	user-select: none;
+}
+end-of-chapter {
+	display: inline-block;
+	min-width: .6rem;
+	min-height: .6rem;
+}
+new-line {
+	letter-spacing: -.4rem;
+	color: #999999;
+}
+w.highlight {
+	text-decoration: underline;
+}
+verse-num.highlight, end-of-chapter.highlight {
+	background-color: #44dd44;
+	border-radius: .3rem;
+}
+@keyframes temp-highlight {
+	from {
+		background-color: #44dd44;
+	}
+	to {
+		background-color: white;
+	}
+}
+verse-num.temp-highlight, end-of-chapter.temp-highlight {
+	border-radius: .3rem;
+	animation-name: temp-highlight;
+	animation-duration: 5s;
+	animation-timing-function: ease-in;
+	animation-fill-mode: forwards;
+}
+
+/************ Other CSS ************/
+body, select, input, textarea {
+	font-family: Calibri;
+	font-size: 1.1rem;
+}
+
+.theme, .bar, select {
+	background-color: #883333;
+	color: #f7f7f7;
+}
+
+.bar {
+	display: flex;
+	box-shadow: 0rem .1rem #999999;
+	user-select: none;
+}
+
+select {
+	cursor: pointer;
+	border: none;
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+}
+
+select:hover, select:focus {
+	color: #b03333;
+	background-color: white;
+}
+
+input[type="text"] {
+	border: none;
+	padding: 0px;
+}
+
+a {
+	text-decoration: none;
+}
+table, td, th {
+	border: .1rem solid #dddddd;
+	border-collapse: collapse;
+}
+td, th {
+	padding: .5rem;
+}
+
+.ref-range {
+	color: #AA0000;
+	font-weight: bold;
+	cursor: pointer;
+	text-decoration: none;
+	margin-right: .3rem;
+}

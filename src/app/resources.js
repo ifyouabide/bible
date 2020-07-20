@@ -18,12 +18,14 @@ export const startingRef = (() => {
 	let params = new URLSearchParams(window.location.search);
 	let ref = params.get('ref');
 	if (!ref || !books.codes.some(k => ref.startsWith(k))) {
-		ref = client.isFullVersion ? 'jn8:31' : 'jn1:1';
+		return;
 	}
 	return ref;
 })();
 
 export const startingBookPromise = (() => {
+	if (!startingRef) return;
+
 	let code = books.codes.filter(k => startingRef.startsWith(k))[0];
 	return get(`lsv_${code}.json`)
 		.then(bk => {

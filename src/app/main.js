@@ -6,18 +6,116 @@ import * as resources from './resources.js';
 import * as result_ui from './result_ui.js';
 import {$id, exportDebug, onLoad, client} from './utils.js';
 
+let g_basicInstructions = client.isFullVersion ? `
+	To read the Bible, select a book from the top-left dropdown.
+	To search the Bible, enter a search term in the bottom-right search box and press 'Search'.
+` : `
+	To read the Bible, select a book from the top-left dropdown.
+	To search the Bible, press the 'Search' button at the bottom.
+`;
+
 let g_about = `
-	<h3>About</h3>
-	<div style="margin-left:50px">
-		The Literal Standard Version of The Holy Bible is a registered copyright of
-		Covenant Press and the Covenant Christian Coalition (© 2020).
+	<h4>ABOUT</h4>
+	<div style="margin-left:1rem;">
+		The Literal Standard Version of The Holy Bible (LSV) is a registered copyright of
+		Covenant Press and the Covenant Christian Coalition (©2020).
 		The LSV has a permissive copyright: all non-commercial use is permissible as long as the text is unaltered.
-		See the <a target="_blank" rel="noopener" href="https://www.lsvbible.com">LSV website</a> for more details.
-		This website is not	affiliated with Covenant Press or the CCC.
+		See <a target="_blank" rel="noopener" href="https://www.lsvbible.com">lsvbible.com</a> for more information.
 		<br/><br/>
-		Questions/comments? Email <a href="mailto:ifyouabide@googlegroups.com">ifyouabide@googlegroups.com</a>
+		Questions about this reader? Email <a href="mailto:ifyouabide@googlegroups.com">ifyouabide@googlegroups.com</a>
 		<br/>
-		We are an open source project: <a target="_blank" rel="noopener" href="https://github.com/kenkania/bible">code</a>
+		See our <a target="_blank" rel="noopener" href="https://github.com/kenkania/bible">open source project</a> on GitHub.
+	</div>
+`;
+
+let g_intro = `
+	<div id="intro" style="margin-top:2rem;">
+		<center><h2>Welcome to the LSV Bible Reader</h2></center>
+		<div style="padding:1rem;">
+			${g_basicInstructions}
+			<br/>
+			${g_about}
+		</div>
+	</div>
+`;
+
+let g_body = `
+	<style>
+		#readPanel, #searchPanel {
+			display: flex;
+			flex-direction: column;
+			min-height: 100vh;
+			max-height: 100vh;
+		}
+		#readPanel {
+			max-width: 40rem;
+		}
+		#searchPanel {
+			flex-grow: 1;
+			flex-shrink: 100;
+		}
+		#resultPanel {
+			flex-grow: 1;
+		}
+
+		#book {
+			flex-grow: 1;
+			line-height: 1.7rem;
+			padding-top: 1.2rem;
+			padding-left: 2rem;
+			padding-right: 2rem;
+
+			overflow-y: auto;
+			overflow-x: hidden;
+			text-align: justify;
+		}
+
+		#resultPanel {
+			flex-grow: 1;
+			padding-left: 2rem;
+			padding-right: 2rem;
+
+			overflow-y: scroll;
+			overflow-x: hidden;
+		}
+	</style>
+	<div id="readPanel" style="visibility:hidden;">
+		<div class="bar" style="justify-content:space-between;min-height:2rem;">
+			<select id="bookSelect" style="margin-left:2rem;width:8rem;height:2rem;"></select>
+			<a
+				href="https://www.lsvbible.com" rel="noopener" class="theme" target="_blank"
+				style="padding-top:.3rem;padding-left:1rem;padding-right:1rem;">LSV
+			</a>
+			<span style="display:inline-block;margin-right:2rem;width:8rem">
+				<input
+					id="refInput" type="text" class="theme" maxlength="9"
+					style="
+						display:none;
+						float:right;
+						width:6rem;
+						height:2rem;
+						text-align:right;
+					">
+				<select
+					id="chapterSelect"
+					style="
+						display:none;
+						float:right;
+						height:2rem;
+						padding-right:2rem;
+						text-align:right;
+					"></select>
+			</span>
+		</div>
+		${g_intro}
+	</div>
+	<div id="searchPanel" style="display:none;">
+		<div class="bar" style="display:flex;">
+			<input id="helpButton" type="button" value="Help">
+			<input id="clearButton" type="button" value="Clear">
+			<textarea id="searchBox" style="flex-grow:1;min-height:3rem;resize:vertical;"></textarea>
+			<input id="searchButton" type="button" value="Search">
+		</div>
 	</div>
 `;
 
@@ -39,16 +137,11 @@ let g_help = `
 	</div>
 `;
 
-let g_welcome = `
-	<div style="max-width:600px;margin-top:50px;">
-		<center><h2>Welcome to the Bible (LSV) Reader/Searcher</h2></center>
-		${g_about}
-	</div>
-`;
-
 function read(str, {highlightPassagePermanently = false} = {}) {
 	let refRange = bible_utils.RefRange.parse(str);
 	if (!refRange) return false;
+
+	$id('intro').style.display = 'none';
 
 	refRange = refRange.snapToExisting().limitToSingleBook();
 
@@ -93,10 +186,13 @@ let g_resultElem;
 let g_results;
 
 onLoad().then(() => {
+	document.body.innerHTML = g_body;
+
 	{
-		$id('bookSelect').innerHTML = books.codes
+		$id('bookSelect').innerHTML = '<option>Book</option>' + books.codes
 			.map(bk => `<option name="${bk}">${books.codeToName[bk]}</option>`)
 			.join('');
+		$id('bookSelect').children[0].disabled = true;
 		$id('bookSelect').addEventListener('change', e => {
 			read(books.codes[e.target.selectedIndex]);
 			g_bookElem.focus();
@@ -129,14 +225,20 @@ onLoad().then(() => {
 
 		g_bookElem = bible_ui.createElement({id: 'book'});
 		$id('readPanel').appendChild(g_bookElem);
-		resources.startingBookPromise.then(() => read(resources.startingRef));
+		if (resources.startingRef) {
+			resources.startingBookPromise.then(() => {
+				read(resources.startingRef);
+				$id('readPanel').style.visibility = 'visible';
+			});
+		} else {
+			$id('readPanel').style.visibility = 'visible';
+		}
 	}
 
 	if (client.isFullVersion) {
 		$id('searchPanel').style.display = '';
 		g_resultElem = result_ui.createElement({id: 'resultPanel'});
 		$id('searchPanel').insertBefore(g_resultElem, $id('searchPanel').firstChild);
-		g_resultElem.showHtml(g_welcome);
 
 		$id('helpButton').addEventListener('click', () => g_resultElem.showHtml(g_help));
 		$id('clearButton').addEventListener('click', () => {
