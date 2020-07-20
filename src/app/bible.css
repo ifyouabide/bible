@@ -101,3 +101,24 @@ td, th {
 	text-decoration: none;
 	margin-right: .3rem;
 }
+
+#book {
+	flex-grow: 1;
+	line-height: 1.7rem;
+	padding-top: 1.2rem;
+	padding-left: 2rem;
+	padding-right: 2rem;
+
+	overflow-y: auto;
+	overflow-x: hidden;
+	text-align: justify;
+}
+
+#resultPanel {
+	flex-grow: 1;
+	padding-left: 2rem;
+	padding-right: 2rem;
+
+	overflow-y: scroll;
+	overflow-x: hidden;
+}

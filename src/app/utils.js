@@ -55,11 +55,7 @@ export class Timer {
 
 export const client = (() => {
 	let isDesktop = navigator.userAgent.search(/iPad|iPhone|iPod|android|webOS/i) == -1;
-	// Both iPad (safari) and moto e5 play (chrome) innerWidth of 980 and devicePixelRatio of 2.
-	// TODO: consider using visualViewport.scale (.367 on moto e5 play).
-	let isFullVersion = isDesktop || (window.innerWidth / window.devicePixelRatio > 900);
 	return {
 		isDesktop: isDesktop,
-		isFullVersion: isFullVersion,
 	};
 })();

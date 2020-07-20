@@ -5,7 +5,7 @@ import {setIfUnset} from './utils.js';
 
 export const searchHelp = `
 	<h3>Search Help</h3>
-	<div style="margin-left:50px">
+	<div style="margin-left:2rem;">
 		Examples:
 		<table>
 			<tr><th>Description</th><th>Query</th></tr>
@@ -32,7 +32,7 @@ export const searchHelp = `
 		</table>
 		<br/>
 		Definition:
-		<div style="margin-left:30px;font-family:monospace;">
+		<div style="margin-left:2rem;font-family:monospace;">
 			<div>search : expression ['IN' ref-ranges]</div>
 			<div>expression : word-matcher ['AND' expression]</div>
 			<div>word-matcher : <a href="https://en.wikipedia.org/wiki/Regular_expression">regex</a></div>
@@ -41,11 +41,11 @@ export const searchHelp = `
 		</div>
 		<br/>
 		OT Book Codes:
-		<div style="margin-left:30px;">
+		<div style="margin-left:2rem;">
 			${books.codes.slice(0, 39).map(c => `<span>${c} </span>`).join('')}
 		</div>
 		NT Book Codes:
-		<div style="margin-left:30px;">
+		<div style="margin-left:2rem;">
 			${books.codes.slice(39).map(c => `<span>${c} </span>`).join('')}
 		</div>
 	</div>
