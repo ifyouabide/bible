@@ -1,0 +1,14 @@
+[
+	{
+		"origin": [
+			"read.lsvbible.com",
+			"lsvbible.com",
+			"lsvbible.web.app",
+			"bible.ifyouabide.org",
+			"ifyouabide.org"
+		],
+		"method": ["GET"],
+		"responseHeader": ["Content-Type"],
+		"maxAgeSeconds": 3600
+	}
+]
