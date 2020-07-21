@@ -50,8 +50,8 @@ verse-num.temp-highlight, end-of-chapter.temp-highlight {
 
 /************ Other CSS ************/
 body, select, input, textarea {
-	font-family: Calibri;
-	font-size: 1.1rem;
+	font-family: 'Open Sans', sans-serif;
+	font-size: 1rem;
 }
 
 .theme, .bar, select {

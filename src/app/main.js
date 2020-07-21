@@ -4,16 +4,13 @@ import * as books from '../common/books.js';
 import * as query from './query.js';
 import * as resources from './resources.js';
 import * as result_ui from './result_ui.js';
-import {$id, exportDebug, onLoad, client} from './utils.js';
+import {$id, exportDebug, onLoad, client, makeElem} from './utils.js';
+
+document.head.appendChild(
+	makeElem('<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">'));
 
 let g_isDualPanel = client.isDesktop || window.innerWidth > 900;
 let g_isBookReadScope = client.isDesktop;
-
-function elem(str) {
-	let parent = document.createElement('span');
-	parent.innerHTML = str;
-	return parent.firstElementChild;
-}
 
 let g_readPanel, g_bookElem;
 {
@@ -49,19 +46,18 @@ let g_readPanel, g_bookElem;
 			</div>
 		</div>
 	`;
-	g_readPanel = elem(`
+	g_readPanel = makeElem(`
 		<div
 			id="readPanel"
 			style="
 				display: flex;
 				flex-direction: column;
-				min-height: 100vh;
-				max-height: 100vh;
+				height: 100%;
 				max-width: 40rem;
 			">
 			<div class="bar" style="justify-content:space-between;min-height:2rem;padding-left:2rem;padding-right:2rem;">
 				<span style="width:8rem;">
-					<select id="bookSelect" style="height:2rem;">
+					<select id="bookSelect" style="height:2rem;width:4rem;">
 						<option>Book</option>
 						${books.codes
 							.map(bk => `<option name="${bk}">${books.codeToName[bk]}</option>`)
@@ -136,7 +132,7 @@ let g_readPanel, g_bookElem;
 		}
 	}
 
-	if (g_isDualPanel) {  // Configure reference input:
+	if (g_isDualPanel && g_isBookReadScope) {  // Configure reference input:
 		let refInput = id('refInput');
 		refInput.style.display = '';
 		refInput.addEventListener('input', e => {
@@ -197,7 +193,8 @@ function read(str, {highlightPassageTemporarily = false, highlightPassagePermane
 
 		$id('bookSelect').selectedIndex = books.codes.indexOf(refRange.start.book) + 1;
 		$id('widthCalculator').innerText = books.codeToName[refRange.start.book];
-		$id('bookSelect').style.width = parseInt($id('widthCalculator').offsetWidth) + 5 + 'px';
+		// Adding 12 is needed for safari.
+		$id('bookSelect').style.width = parseInt($id('widthCalculator').offsetWidth) + 12 + 'px';
 
 		if (g_isBookReadScope) {
 			if ($id('refInput') != document.activeElement) {
@@ -225,21 +222,20 @@ function read(str, {highlightPassageTemporarily = false, highlightPassagePermane
 
 let g_searchPanel, g_resultElem;
 {
-	g_searchPanel = elem(`
+	g_searchPanel = makeElem(`
 		<div
 			id="searchPanel"
 			style="
 				display: ${g_isDualPanel ? 'flex' : 'none'};
 				flex-direction: column;
-				min-height: 100vh;
-				max-height: 100vh;
 				flex-grow: 1;
 				flex-shrink: 100;
+				height: 100%;
 			">
-			<div class="bar" style="display:flex;">
+			<div style="display:flex;">
 				<input id="helpButton" type="button" value="Help">
 				<input id="clearButton" type="button" value="Clear">
-				<textarea id="searchBox" style="flex-grow:1;min-height:3rem;resize:vertical;"></textarea>
+				<textarea id="searchBox" rows="2" style="flex-grow:1;resize:vertical;"></textarea>
 				<input id="searchButton" type="button" value="Search">
 			</div>
 		</div>
@@ -271,7 +267,7 @@ let g_searchPanel, g_resultElem;
 	g_searchPanel.insertBefore(g_resultElem, g_searchPanel.firstChild);
 
 	if (!g_isDualPanel) {
-		let topBar = elem(`
+		let topBar = makeElem(`
 			<div class="bar" style="justify-content:center;padding-top:.3rem;height:1.7rem;">
 				<span id="back">
 					Back

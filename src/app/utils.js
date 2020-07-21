@@ -36,6 +36,12 @@ export function onLoad() {
 	});
 }
 
+export function makeElem(str) {
+	let parent = document.createElement('span');
+	parent.innerHTML = str;
+	return parent.firstElementChild;
+}
+
 export class Timer {
 	constructor() {
 		this.reset();
