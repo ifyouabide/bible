@@ -4,12 +4,14 @@
     "cpy-cli": "^3.1.1",
     "google-closure-compiler": "^20200614.0.0",
     "http-server": "^0.12.3",
-    "npm-run-all": "^4.1.5"
+    "npm-run-all": "^4.1.5",
+    "xmldoc": "^1.1.2"
   },
   "type": "module",
   "scripts": {
+    "build-app-deps:kjv": "node src/processing/kjv/kjv.js",
     "build-app-deps:lsv": "python src/processing/lsv/lsv.py",
-    "build-app:html": "node \"src/build.js\"",
+    "build-app:html": "node src/build.js",
     "build-app:js": "google-closure-compiler src/app/*.js src/common/*.js --js_output_file=build/main.js --compilation_level=ADVANCED_OPTIMIZATIONS --language_out=ECMASCRIPT6",
     "build-app:other": "cpy \"src/app/favicon.ico\" build",
     "build": "npm-run-all -p build-app-deps:* build-app:*",
