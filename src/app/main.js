@@ -53,7 +53,6 @@ let g_readPanel, g_bookElem;
 		<div
 			id="readPanel"
 			style="
-				visibility:hidden;
 				display: flex;
 				flex-direction: column;
 				min-height: 100vh;
@@ -141,7 +140,7 @@ let g_readPanel, g_bookElem;
 		let refInput = id('refInput');
 		refInput.style.display = '';
 		refInput.addEventListener('input', e => {
-			read(e.target.value, {skipFocus: true});
+			read(e.target.value, {skipFocus: true, highlightPassageTemporarily: true});
 		});
 		refInput.addEventListener('keydown', e => {
 			if (e.key == 'Enter') {
@@ -167,15 +166,15 @@ let g_readPanel, g_bookElem;
 	g_readPanel.insertBefore(g_bookElem, g_readPanel.lastElementChild);
 	if (resources.startingRef) {
 		resources.startingBookPromise.then(() => {
-			read(resources.startingRef);
-			g_readPanel.style.visibility = 'visible';
+			read(resources.startingRef, {highlightPassageTemporarily: true});
+			g_readPanel.style.display = 'flex';
 		});
 	} else {
-		g_readPanel.style.visibility = 'visible';
+		g_readPanel.style.display = 'flex';
 	}
 }
 
-function read(str, {highlightPassagePermanently = false, skipFocus = false} = {}) {
+function read(str, {highlightPassageTemporarily = false, highlightPassagePermanently = false, skipFocus = false} = {}) {
 	let refRange = bible_utils.RefRange.parse(str);
 	if (!refRange) return false;
 
@@ -191,13 +190,14 @@ function read(str, {highlightPassagePermanently = false, skipFocus = false} = {}
 		? refRange.start.book : (refRange.start.book + refRange.start.chapter + ':'));
 
 	if (g_bookElem.show(readRange, {scrollToRef: refRange.start})) {
-		g_bookElem.highlightPassage(
-			str.indexOf('-') != -1 ? refRange : refRange.start, highlightPassagePermanently);
+		if (highlightPassageTemporarily || highlightPassagePermanently)
+			g_bookElem.highlightPassage(
+				str.indexOf('-') != -1 ? refRange : refRange.start, highlightPassagePermanently);
 		if (g_results) g_bookElem.highlightHits(g_results.hits);
 
 		$id('bookSelect').selectedIndex = books.codes.indexOf(refRange.start.book) + 1;
 		$id('widthCalculator').innerText = books.codeToName[refRange.start.book];
-		$id('bookSelect').style.width = parseInt($id('widthCalculator').offsetWidth) + 1 + 'px';
+		$id('bookSelect').style.width = parseInt($id('widthCalculator').offsetWidth) + 5 + 'px';
 
 		if (g_isBookReadScope) {
 			if ($id('refInput') != document.activeElement) {
