@@ -1,23 +1,28 @@
 {
   "name": "bible",
   "devDependencies": {
+    "cpy": "^8.1.0",
     "cpy-cli": "^3.1.1",
     "google-closure-compiler": "^20200614.0.0",
     "http-server": "^0.12.3",
     "npm-run-all": "^4.1.5",
+    "tmp": "^0.2.1",
     "xmldoc": "^1.1.2"
   },
   "type": "module",
   "scripts": {
-    "build-app-deps:kjv": "node src/processing/kjv/kjv.js",
-    "build-app-deps:lsv": "python src/processing/lsv/lsv.py",
-    "build-app:html": "node src/build.js",
-    "build-app:js": "google-closure-compiler src/app/*.js src/common/*.js --js_output_file=build/main.js --compilation_level=ADVANCED_OPTIMIZATIONS --language_out=ECMASCRIPT6",
-    "build-app:other": "cpy \"src/app/favicon.ico\" build",
-    "build": "npm-run-all -p build-app-deps:* build-app:*",
+    "cc": "google-closure-compiler",
     "http-server": "http-server",
-    "serve": "http-server build -p 8000 -c-1",
-    "serve-dev": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build -p 8090 -c-1\"",
-    "push": "gsutil rsync -R build gs://lsvbible"
+    "build:kjv": "node src/processing/kjv/kjv.js",
+    "build:lsv": "python src/processing/lsv/lsv.py",
+    "build": "npm-run-all -p build:*",
+    "serve": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build -p 8090 -c-1\"",
+    "serve-dev": "http-server . -p 8000 -c-1",
+    "ifyouabide:build": "node src/build.js ifyouabide",
+    "ifyouabide:serve": "http-server build/ifyouabide -p 8000 -c-1",
+    "ifyouabide:push": "gsutil rsync -R build/ifyouabide gs://ifyouabide",
+    "lsvbible:build": "node src/build.js lsvbible",
+    "lsvbible:serve": "http-server build/lsvbible -p 8000 -c-1",
+    "lsvbible:push": "gsutil rsync -R build/lsvbible gs://lsvbible"
   }
 }

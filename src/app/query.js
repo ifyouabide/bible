@@ -1,7 +1,7 @@
 import {Ref, RefRange} from './bible_utils.js';
 import * as books from '../common/books.js';
+import {setIfUnset} from '../common/utils.js';
 import * as resources from './resources.js';
-import {setIfUnset} from './utils.js';
 
 export const searchHelp = `
 	<h3>Search Help</h3>

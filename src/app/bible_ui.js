@@ -1,6 +1,6 @@
 import * as bible_utils from './bible_utils.js';
+import {ifDebug, Timer, exportDebug} from '../common/utils.js';
 import * as resources from './resources.js';
-import {ifDebug, Timer, exportDebug} from './utils.js';
 
 export function createElement({id} = {}) {
 	let elem = document.createElement('div');
@@ -207,7 +207,67 @@ function makeHtmlForTokenRange(
 	}
 	return h.join('');
 }
+/*
+function toLinesStr() {
+	let lineWidth = 550;
 
+	let tokens = g_book['tokens'];
+	let h = [];
+	h.push('<div>');
+	let pos = {x: 0, y: 0};
+
+	let refs = Object.entries(g_book['refs']);
+	let ri = 0;
+	for (; ri < refs.length; ri++) {
+		if (refs[ri][1] >= 0) {
+			break;
+		}
+	}
+	ri--;
+
+	h.push('<div style="word-spacing:5px;">');
+
+	let verseCount = -1;
+	for (let tki = 0; tki < tokens.length; tki++) {
+		if (ri < refs.length - 1 && tki == refs[ri+1][1]) {
+			verseCount++;
+			if (verseCount == g_verseCount) break;
+			ri++;
+
+			let ref = parse(g_book['code'] + refs[ri][0]);
+			h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
+		}
+
+		let tk = tokens[tki];
+		let writable;
+		if ('word' in tk) {
+			writable = tk['word'];
+		} else if ('punctuation' in tk) {
+			writable = tk['punctuation'];
+		}
+		if (writable) {
+			h.push(writable);
+			pos.x += tokenToWidth[writable];
+			continue;
+		}
+		if ('layout' in tk) {
+			if (tk['layout'] == 'space') {
+				h.push(' ');
+				if (pos.x + 6 > lineWidth) {
+					pos.x = 0;
+					pos.y += 22;
+					h.push('</div><div>');
+				} else {
+					pos.x += 6;
+				}
+			}
+		}
+	}
+
+	h.push('</div></div>');
+	return h.join('');
+}
+*/
 function getContainerLineHeight(container) {
 	// getComputedStyle().lineHeight is imprecise
 	var e = document.createElement('div');

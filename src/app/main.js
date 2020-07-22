@@ -1,11 +1,13 @@
 import * as bible_ui from './bible_ui.js';
 import * as bible_utils from './bible_utils.js';
 import * as books from '../common/books.js';
+import {$id, exportDebug, onLoad, client, makeElem} from '../common/utils.js';
 import * as query from './query.js';
 import * as resources from './resources.js';
 import * as result_ui from './result_ui.js';
-import {$id, exportDebug, onLoad, client, makeElem} from './utils.js';
+import settings from './settings.js';
 
+// This is now in index.html, but keep here until all mini users have updated.
 document.head.appendChild(
 	makeElem('<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">'));
 
@@ -22,27 +24,13 @@ let g_readPanel, g_bookElem;
 		To search the Bible, press the 'Search' button at the bottom.
 	`;
 
-	let aboutHtml = `
-		<h4>About</h4>
-		<div style="margin-left:1rem;">
-			The Literal Standard Version of The Holy Bible (LSV) is a registered copyright of
-			Covenant Press and the Covenant Christian Coalition (©2020).
-			The LSV has a permissive copyright: all non-commercial use is permissible as long as the text is unaltered.
-			See <a target="_blank" rel="noopener" href="https://www.lsvbible.com">lsvbible.com</a> for more information.
-			<br/><br/>
-			Questions about this reader? Email <a href="mailto:ifyouabide@googlegroups.com">ifyouabide@googlegroups.com</a>
-			<br/>
-			See our <a target="_blank" rel="noopener" href="https://github.com/kenkania/bible">open source project</a> on GitHub.
-		</div>
-	`;
-
 	let introHtml = `
 		<div id="intro" style="margin-top:2rem;overflow-y:auto;">
-			<center><h2>Welcome to the LSV Bible Reader</h2></center>
+			<center><h2>${settings.welcome}</h2></center>
 			<div style="padding:1rem;">
 				${basicInstructionsHtml}
 				<br/>
-				${aboutHtml}
+				${settings.about}
 			</div>
 		</div>
 	`;
@@ -66,8 +54,8 @@ let g_readPanel, g_bookElem;
 					<span id="widthCalculator" style="visibility:hidden;position:absolute;"></span>
 				</span>
 				<a
-					href="https://www.lsvbible.com" rel="noopener" class="theme" target="_blank"
-					style="padding-top:.3rem;">LSV
+					href="${settings.bibleLink}" rel="noopener" class="theme" target="_blank"
+					style="padding-top:.3rem;">${settings.bible.toUpperCase()}
 				</a>
 				<span style="display:inline-block;width:8rem;">
 					<input
@@ -330,3 +318,4 @@ onLoad().then(() => {
 exportDebug('bible_utils', bible_utils);
 exportDebug('query', query);
 exportDebug('resources', resources);
+exportDebug('settings', settings);

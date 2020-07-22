@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%;">
+<head>
+	<title>Perf Test</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="../app/bible.css">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">
+	<style>
+		.vnum {
+			position:absolute;
+			display: none;
+		}
+		abs {
+			position:absolute;
+			font-size: 16px;
+			font-family: 'Open Sans';
+		}
+	</style>
+</head>
+<body style="margin:0rem;display:flex;justify-content:center;height:100%;">
+	<div style="display:flex;height:100%;max-width:40rem;flex-direction:column;">
+		<div>
+			<div style="display:flex;justify-content:center;">
+				<input type="button" value="Clear">
+			</div>
+			<div style="display:flex;justify-content:center;overflow-x:auto;">
+				<input type="button" value="Nodes1">
+				<input type="button" value="Text">
+				<input type="button" value="TextPlusVerseNodes">
+			</div>
+			<div style="display:flex;justify-content:center;overflow-x:auto;">
+				<input type="button" value="Nodes1Hierarchy">
+				<input type="button" value="AbsNodes" disabled id="absNodes">
+				<input type="button" value="Lines" disabled id="lines">
+				<input type="button" value="LinesStr" disabled id="linesStr">
+			</div>
+			<div style="display:flex;justify-content:center;">
+				<span>
+					<label>VerseCount:</label><input type="text" size="6" id="verseCount">
+				</span>
+				<input type="text" id="time">
+			</div>
+		</div>
+		<div id="book" style="overflow-y:auto;overflow-x:hidden;padding:2rem;border:1px solid black;"></div>
+	</div>
+	<script src="perf.js" type="module"></script>
+</body>
+</html>

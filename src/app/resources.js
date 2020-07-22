@@ -1,6 +1,7 @@
 import * as books from '../common/books.js';
 import * as formats from '../common/formats.js';
-import {exportDebug, client} from './utils.js';
+import {exportDebug, client} from '../common/utils.js';
+import settings from './settings.js';
 
 let g_resources = {};
 
@@ -26,17 +27,17 @@ export const startingRef = (() => {
 export const startingBookPromise = (() => {
 	if (!startingRef) return;
 
-	let code = books.codes.filter(k => startingRef.startsWith(k))[0];
-	return get(`lsv_${code}.json`)
+	let bkCode = books.codes.filter(k => startingRef.startsWith(k))[0];
+	return get(`${settings.bible}_${bkCode}.json`)
 		.then(bk => {
-			let startingBook = formats.VerseTextToTokenConverter.convertBook(code, bk);
-			bible[code] = startingBook;
+			let startingBook = formats.VerseTextToTokenConverter.convertBook(bkCode, bk);
+			bible[bkCode] = startingBook;
 			return startingBook;
 		});
 })();
 
 export let bible = {};
-get('lsv.json').then(b => {
+get(settings.bible + '.json').then(b => {
 	bible = formats.VerseTextToTokenConverter.convertBible(b);
 	exportDebug('bible', bible);
 });

@@ -9,6 +9,7 @@ From:
 | The Holy Bible (LSV).pdf | https://drive.google.com/u/0/uc?id=12JU9yfHZ3QXFeu2KeoHeosdqZSZCWp-f&export=download (ie the "Read Online" button of https://www.lsvbible.com/) |
 | lsv_raw.txt | The above PDF (pages 11 - 764) was converted to HTML, after which the text was extracted via JS |
 | lsv.txt | Some manual non-content changes. |
+| favicon.ico | https://www.lsvbible.com/favicon.ico |
 
 ## About/License
 

@@ -32,48 +32,58 @@ function toVerse(contents) {
 	if (ref.chAndVerse.endsWith(':0')) return [];
 
 	let nodes = new xmldoc.XmlDocument('<root>' + contents + '</root>').children.slice(1);
+	let title = '';
 	let text = '';
 
-	function process(node) {
+	function process(node, {inTitle = false} = {}) {
+		function addText(t) {
+			if (inTitle)
+				title += t;
+			else
+				text += t;
+		}
+
 		if (node.name == 'note') return;
 
 		if (node.text) {
-			text += node.text;
+			addText(node.text);
 			return;
 		}
 
 		if (node.name == 'divineName' && node.children.length == 1) {
-			text += node.firstChild.text.toUpperCase();
+			addText(node.firstChild.text.toUpperCase());
 			return;
 		}
 		
 		//node.name == 'inscription' || node.name == 'title' || node.name == 'q'
 		if (!node.children) throw new Error('unrecognized node' + node);
 
-		node.children.forEach(process);
+		let nextInTitle = inTitle || node.name == 'title';
+
+		node.children.forEach(n => process(n, {inTitle: nextInTitle}));
 	}
 
 	for (let node of nodes) {
 		process(node);
 	}
 
-	if (contents.indexOf('<div canonical="true"') == -1) {
-		text += ' ';
-	} else {
-		// End of chapter.
-		text = text.trim();
-	}
+	let endOfUnit = contents.indexOf('<div canonical="true"') != -1
+		|| (contents.indexOf('<chapter ') != -1 && ref.book == 'ps');
 
-	return {
-		[ref.chAndVerse]: text,
-	};
+	text = text.trim() + (endOfUnit ? '' : ' ');
+
+	let obj = {};
+	if (title.length)
+		obj[ref.chAndVerse.split(':')[0] + ':0'] = title;
+	obj[ref.chAndVerse] = text;	
+	return obj;
 }
 
 function toBook(contents) {
 	let verseContents = contents.split('\n').slice(2, -1);
 	let verses = verseContents.map(toVerse).flat();
 
-	return [parseRef(verseContents[0]).book, Object.fromEntries(verses.map(o => Object.entries(o)[0]))];
+	return [parseRef(verseContents[0]).book, Object.fromEntries(verses.map(o => Object.entries(o)).flat())];
 }
 
 function toBible(contents) {
