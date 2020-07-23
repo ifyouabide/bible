@@ -10,7 +10,7 @@ const g_nonWordChars = new Set(
 		.concat(Array.from(g_translationChars)));
 
 export const VerseTextToTokenConverter = {
-	convertText: (bkCode, text) => {
+	convertText: (text) => {
 		let tokens = [];
 		let word = '';
 		let chars = Array.from(text);
@@ -93,7 +93,7 @@ export const VerseTextToTokenConverter = {
 		let refs = {};
 		for (let [ref, text] of Object.entries(verses)) {
 			refs[ref] = tokens.length;
-			tokens.push(...VerseTextToTokenConverter.convertText(bkCode, text));
+			tokens.push(...VerseTextToTokenConverter.convertText(text));
 		}
 		return {
 			'code': bkCode,

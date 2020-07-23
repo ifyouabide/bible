@@ -10,7 +10,7 @@ export function writeBibleFilesSync(bibleName, bible) {
 	for (let [k, v] of Object.entries(bible)) {
 		fs.writeFileSync(
 			path.join(dir, `${bibleName}_${k}.json`),
-			JSON.stringify(v, null, '\n').replace(/\n\n/g, '\n'),
+			JSON.stringify(v, null, '\n').replace(/\n\n+/g, '\n'),
 			'utf8');
 	}
 }
