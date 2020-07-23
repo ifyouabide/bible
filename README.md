@@ -4,7 +4,7 @@ A free, open source, web-based tool for reading/searching the Bible.
 
 ## Development
 
-Download the source. Install python3 and nodejs. Then, in the source dir:
+Download the source. Install nodejs (v14.5+). Then, in the source dir:
 
 `npm run build`
 

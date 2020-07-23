@@ -14,7 +14,7 @@
     "cc": "google-closure-compiler",
     "http-server": "http-server",
     "build:kjv": "node src/processing/kjv/kjv.js",
-    "build:lsv": "python src/processing/lsv/lsv.py",
+    "build:lsv": "node src/processing/lsv/lsv.js",
     "build": "npm-run-all -p build:*",
     "serve": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build -p 8090 -c-1\"",
     "serve-dev": "http-server . -p 8000 -c-1",

@@ -5,7 +5,10 @@ export function writeBibleFilesSync(bibleName, bible) {
 	let dir = path.join('build', 'resources');
 	fs.mkdirSync(dir, {recursive: true});
 
-	fs.writeFileSync(path.join(dir, bibleName + '.json'), JSON.stringify(bible), 'utf8');
+	fs.writeFileSync(
+		path.join(dir, bibleName + '.json'),
+		JSON.stringify(bible, null, '\n').replace(/\n\n+/g, '\n'),
+		'utf8');
 
 	for (let [k, v] of Object.entries(bible)) {
 		fs.writeFileSync(
