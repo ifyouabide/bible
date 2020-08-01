@@ -24,6 +24,11 @@ let g_hasZeroWidthScrollbars = (() => {
 	return zeroWidth;
 })();
 
+let g_noAppearanceStyle = `
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+`;
 
 let g_readPanel, g_bookElem;
 {
@@ -66,7 +71,12 @@ let g_readPanel, g_bookElem;
 					padding-left:2rem;
 					padding-right:${g_hasZeroWidthScrollbars ? 2 : 3}rem;">
 				<span style="width:8rem;" class="theme">
-					<select id="bookSelect" style="height:2rem;width:4rem;">
+					<select
+						id="bookSelect"
+						style="
+							${client.isDesktop ? '' : g_noAppearanceStyle}
+							height:2rem;
+							width:4rem;">
 						<option>Book</option>
 						${books.codes
 							.map(bk => `<option name="${bk}">${books.codeToName[bk]}</option>`)
@@ -92,6 +102,7 @@ let g_readPanel, g_bookElem;
 						id="chapterSelect"
 						style="
 							display:none;
+							${client.isDesktop ? '' : g_noAppearanceStyle}
 							float:right;
 							height:2rem;
 						"></select>
@@ -271,8 +282,8 @@ function read(str, {highlightPassageTemporarily = false, highlightPassagePermane
 		$id('bookSelect').selectedIndex = books.codes.indexOf(refRange.start.book) + 1;
 		$id('widthCalculator').innerText = books.codeToName[refRange.start.book];
 		// Adding 12 for safari, 12 for the arrow.
-		let round = x => Math.round(x / 5) * 5;
-		$id('bookSelect').style.width = round(parseInt($id('widthCalculator').offsetWidth) + 12 + 12) + 'px';
+		let arrow = client.isDesktop ? 12 : 0;
+		$id('bookSelect').style.width = $id('widthCalculator').offsetWidth + 12 + arrow + 'px';
 
 		if (g_isBookReadScope) {
 			if ($id('refInput') != document.activeElement) {

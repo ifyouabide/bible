@@ -24,6 +24,7 @@
     "serve-dev": "http-server .  --brotli -p 8000 -c-1",
     "ifyouabide:build": "node src/build.js ifyouabide",
     "ifyouabide:serve": "http-server build/ifyouabide --brotli -p 8000 -c-1",
+    "ifyouabide:serve-https": "http-server build/ifyouabide --ssl --brotli -p 8000 -c-1",
     "ifyouabide:push": "node src/push.js ifyouabide",
     "lsvbible:build": "node src/build.js lsvbible",
     "lsvbible:serve": "http-server build/lsvbible --brotli -p 8000 -c-1",

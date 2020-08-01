@@ -116,7 +116,7 @@ td, th {
 }
 
 #book {
-	flex-grow: 1;
+	height: 100%;
 	padding-top: 1.8rem;
 	padding-left: 2rem;
 	padding-right: 2rem;
