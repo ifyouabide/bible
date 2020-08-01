@@ -1,7 +1,7 @@
 # Common
 
 A bible is a list of books. Note, we generally use the Bible [book codes](book_codes.md) instead
-of names. We use UTF-8 encoding for files.
+of names. We generally use UTF-8 encoding for files.
 
 ## Tokens and Equivalent JSON and Text Format
 
@@ -21,7 +21,6 @@ Most writings can be considered as an ordered list of tokens. We define several 
       paragraphs are wrapped to same level of indentation (although the first line is slightly
       indented)
 
-
 Tokens have a simple JSON representation, e.g.:
 
 ```js
@@ -37,7 +36,7 @@ Tokens have a simple JSON representation, e.g.:
 Tokens also have a simple text representation, using the following rules:
 
 * punctuation is defined as one of the following characters: …,;:.?!-—'‘’"“”(){}[]
-* a word is a sequence of characters containing non-punctuation or punctuation preceded by
+* a word is a sequence of characters containing non-punctuation or -'’ preceded by
   non-punctuation (this could be improved)
 * for layout:
   * the space character ' ' is used for a space token
@@ -50,58 +49,72 @@ Tokens also have a simple text representation, using the following rules:
 
 ## Bible Formats
 
-Bibles 
+There are a few main formats:
+  * verse text: a map of book codes to books, with each being a map of chapter:verse to text 
+  * verse token: a map of book codes to books, with each being a map of chapter:verse to tokens
+  * book token: a map of book codes to books, with each having a list of tokens and map of
+    chapter:verse to starting token index
 
-### Token Format
+E.g., in JSON:
 
-Bibles can be represented in a token-centric JSON format that looks like:
-
-```json
+### Verse Text
+```js
 {
   "ge": {
-    "tokens": [
-      {"layout": "new-paragraph"},
-      {"note": 0},
+    "1:1": "In the beginning, God created the heavens and the earth.",
+    // ...
+  },
+  // ...
+}
+````
+
+### Verse Token
+```js
+{
+  "ge": {
+    "1:1": [
       {"word": "In"},
       {"layout": "space"},
       {"word": "the"},
-      {"layout": "space"},
-      {"word": "beginning"},
-      {"punctuation": ","},
+      // ...
     ],
-    "refs": {
-      "1:1": 0,  // index of the token starting the verse
-      "1:2": 23,
-    }
+    // ...
   },
+  // ...
 }
-```
+````
 
-A token is a dictionary that contains exactly one of the following entries:
-* *word*: the word as a string
-* *punctuation*: the punctuation as a string
-* *layout*: one of:
-  * "space"
-  * "paragraph"
-  * "blankLine"
-  * {"line": integer indent level}
-  * "endLine"
-* *note*: index into the embedded note list
-* *translation*: one of:
-  * {"noOriginal": "begin"/"end"},
-  * {"disputed": "begin"/"end"},
-
-A bible mapping maps tokens from one bible to another. Per book, a token index or set of token
-indices is associated with a token index or set of token indices of another bible. This mapping
-may be partial.
-
-```json
+### Book Token
+```js
 {
   "ge": {
-    "map": [
-      [[0, 1], 0],
-      [2, [1, 2]],
+    "tokens": [
+      {"word": "In"},
+      {"layout": "space"},
+      {"word": "the"},
     ],
+    "refs": {
+      "1:1": 0,
+      "1:2": 43,
+      // ...
+    }
   },
+  // ...
+}
+````
+
+### Bible Map
+
+A bible mapping maps tokens from one bible to another. Per book (or verse), a set of token indices
+is associated with a set of token indices of another bible. This mapping may be partial.
+
+```js
+{
+  "ge": [
+      [[0, 1], [0]],
+      [[2], [1, 2]],
+      // ...
+  ],
+  // ...
 }
 ```
