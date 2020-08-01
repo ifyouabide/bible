@@ -6,7 +6,7 @@
     "google-closure-compiler": "^20200614.0.0",
     "http-server": "^0.12.3",
     "npm-run-all": "^4.1.5",
-    "tmp": "^0.2.1",
+    "tempy": "^0.6.0",
     "xmldoc": "^1.1.2"
   },
   "type": "module",
@@ -14,15 +14,19 @@
     "cc": "google-closure-compiler",
     "http-server": "http-server",
     "build:kjv": "node src/processing/kjv/kjv.js",
-    "build:lsv": "node src/processing/lsv/lsv.js",
-    "build": "npm-run-all -p build:*",
-    "serve": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build -p 8090 -c-1\"",
-    "serve-dev": "http-server . -p 8000 -c-1",
+    "build:layout": "cpy src/processing/layout/layout.json.br build/resources",
+    "build:lsv:text": "node src/processing/lsv/text.js",
+    "build:lsv:original": "node src/processing/lsv/original.js",
+    "build:lsv": "npm-run-all -s build:lsv:*",
+    "build:strongs": "node src/processing/strongs/strongs.js",
+    "build": "npm-run-all -s build:kjv build:lsv:* build:strongs build:layout",
+    "serve": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build  --brotli -p 8090 -c-1\"",
+    "serve-dev": "http-server .  --brotli -p 8000 -c-1",
     "ifyouabide:build": "node src/build.js ifyouabide",
-    "ifyouabide:serve": "http-server build/ifyouabide -p 8000 -c-1",
-    "ifyouabide:push": "gsutil rsync -R build/ifyouabide gs://ifyouabide",
+    "ifyouabide:serve": "http-server build/ifyouabide --brotli -p 8000 -c-1",
+    "ifyouabide:push": "node src/push.js ifyouabide",
     "lsvbible:build": "node src/build.js lsvbible",
-    "lsvbible:serve": "http-server build/lsvbible -p 8000 -c-1",
-    "lsvbible:push": "gsutil rsync -R build/lsvbible gs://lsvbible"
+    "lsvbible:serve": "http-server build/lsvbible --brotli -p 8000 -c-1",
+    "lsvbible:push": "node src/push.js lsvbible"
   }
 }

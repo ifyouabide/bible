@@ -9,10 +9,10 @@ chapter-num, psalm-num {
 verse-num {
 	position: relative;
 	top: -.2rem;
+	line-height: 0px;
 
-	font-size: .7rem;
 	padding-right: .1rem;
-	vertical-align: text-top;
+	font-size: .7rem;
 	color: #999999;
 	user-select: none;
 }
@@ -21,12 +21,21 @@ end-of-chapter {
 	min-width: .6rem;
 	min-height: .6rem;
 }
-new-line {
-	letter-spacing: -.4rem;
+line-break {
+	letter-spacing: -.4em;
+	padding-right: .4em;
 	color: #999999;
 }
 w.highlight {
 	text-decoration: underline;
+}
+fixed-highlight {
+	display: block;
+	position: absolute;
+	height: 2px;
+	background-color: #a0a0a0;
+	margin-top: 1.3rem;
+	user-select: none;
 }
 verse-num.highlight, end-of-chapter.highlight {
 	background-color: #44dd44;
@@ -47,6 +56,10 @@ verse-num.temp-highlight, end-of-chapter.temp-highlight {
 	animation-timing-function: ease-in;
 	animation-fill-mode: forwards;
 }
+layout-line {
+	display: inline-block;
+	width: 44rem;
+}
 
 /************ Other CSS ************/
 body, select, input, textarea {
@@ -54,28 +67,28 @@ body, select, input, textarea {
 	font-size: 1rem;
 }
 
-.theme, .bar, select {
-	background-color: #883333;
-	color: #f7f7f7;
+.bible-title {
+	letter-spacing: 1.4px;
+	font-weight: bold;
 }
 
-.bar {
+.top-bar, .bar {
 	display: flex;
-	box-shadow: 0rem .1rem #999999;
 	user-select: none;
+}
+
+.top-bar {
+	border-bottom: 1.5px solid #aaa;
+}
+
+.button {
+	user-select: none;
+	cursor: pointer;
 }
 
 select {
 	cursor: pointer;
 	border: none;
-	appearance: none;
-	-webkit-appearance: none;
-	-moz-appearance: none;
-}
-
-select:hover, select:focus {
-	color: #b03333;
-	background-color: white;
 }
 
 input[type="text"] {
@@ -104,14 +117,15 @@ td, th {
 
 #book {
 	flex-grow: 1;
-	line-height: 1.7rem;
-	padding-top: 1.2rem;
+	padding-top: 1.8rem;
 	padding-left: 2rem;
 	padding-right: 2rem;
 
-	overflow-y: auto;
+	overflow-y: scroll;
 	overflow-x: hidden;
-	text-align: justify;
+
+	line-height: 1.8rem;
+	border: 1.5px solid #aaa;
 }
 
 #resultPanel {
@@ -121,4 +135,27 @@ td, th {
 
 	overflow-y: scroll;
 	overflow-x: hidden;
+}
+
+/************ Site-specifc ************/
+
+select:hover, select:focus {
+/* $BEGIN(ifyouabide) */
+	color: #b03333;
+	background-color: white;
+/* $END */
+/* $BEGIN(lsvbible) *
+	background-color: #fff;
+/* $END */
+}
+
+.theme, .top-bar, .bar, select {
+/* $BEGIN(ifyouabide) */
+	background-color: #883333;
+	color: #f7f7f7;
+/* $END */
+/* $BEGIN(lsvbible) *
+	background-color: #ffbd2f;
+	color: #222;
+/* $END */
 }

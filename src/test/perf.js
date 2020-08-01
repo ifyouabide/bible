@@ -1,62 +1,17 @@
+import * as bibles from '../common/bibles.js';
 import * as books from '../common/books.js';
-import * as formats from '../common/formats.js';
-import * as layout from '../processing/layout.js';
+import * as refs from '../common/refs.js';
+import * as widths from '../processing/layout/widths.js';
 import text from './text.js';
 
-window.layout = layout;
+window.widths = widths;
 
 document.getElementById('verseCount').value = new URLSearchParams(location.search).get('v') || 1364;
 
 let g_bookElem = document.getElementById('book');
 let g_verses = Object.entries(text);
-let g_book = formats.VerseTextToTokenConverter.convertBook('je', text);
+let g_book = bibles.VerseTextToTokenConverter.convertBook('je', text);
 let g_verseCount;
-
-function parse(str) {
-	let bk = parseBook(str);
-	if (!bk) return;
-	let ch = parseChapter(str);
-	let v;
-	if (!ch) {
-		ch = 1;
-		v = 1;
-	} else {
-		v = parseVerse(str);
-		if (v === undefined) {
-			v = 1;
-		}
-	}
-	return {book: bk, chapter: ch, verse: v, chapterAndVerse: ch + ':' + v, toString: () => bk + ch + ':' + v};
-}
-
-/** Returns the valid book code or undefined. */
-function parseBook(str) {
-	let chStart = str.slice(1).search(/\d/);
-	let bk = (chStart != -1) ? str.slice(0, chStart + 1) : str;
-	if (books.codeSet.has(bk)) return bk;
-}
-
-/** Returns `${chapter}:${verse}` or undefined. */
-function parseChapterAndVerse(str) {
-	let index = str.search(/\d+:\d+$/);
-	if (index != -1) return str.slice(index);
-}
-
-/** Returns the chapter or undefined if missing or not positive. */
-function parseChapter(str) {
-	let index = str.search(/\d+(:|$)/);
-	if (index == -1) return;
-	let ch = parseInt(str.slice(index).split(':', 1)[0]);
-	if (!isNaN(ch) && ch > 0) return ch;
-}
-
-/** Returns the verse or undefined if missing or negative. */
-function parseVerse(str) {
-	let match = str.match(/\d+:(\d+)/);
-	if (!match) return;
-	let v = parseInt(match[1]);
-	if (!isNaN(v) && v >= 0) return v;
-}
 
 // All verses:
 //   intel core i5-7200U
@@ -95,7 +50,7 @@ function makeHtmlForTokenRange1(
 			if (verseCount == g_verseCount) break;
 
 			ri++;
-			let ref = parse(bk['code'] + refs[ri][0]);
+			let ref = refs.parse(bk['code'] + refs[ri][0]);
 			if (verseNums) {
 				h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 			}
@@ -185,9 +140,9 @@ function makeHtmlForTokenRange2(
 			if (verseCount == g_verseCount) break;
 
 			ri++;
-			let ref = parse(bk['code'] + refs[ri][0]);
+			let ref = refs.parse(bk['code'] + refs[ri][0]);
 
-			if (ri == 0 || ref.chapter != parseChapter(refs[ri-1][0])) {
+			if (ri == 0 || ref.chapter != refs.parseChapter(refs[ri-1][0])) {
 				if (ref.chapter != 1 && tki != tkiStart)
 					h.push(`</chapter>`);
 				h.push('<chapter>');
@@ -230,7 +185,7 @@ window.setTimeout(() => {
 			writable = tk['punctuation'];
 		}
 		if (!(writable in tokenToWidth)) {
-			tokenToWidth[writable] = layout.getWidth(writable, {fontSize: '16px', fontFamily: 'Open Sans', letterSpacing: '2px'});
+			tokenToWidth[writable] = width.getWidth(writable, {fontSize: '16px', fontFamily: 'Open Sans', letterSpacing: '2px'});
 		}
 	}
 	window.tokenToWidth = tokenToWidth;
@@ -382,7 +337,7 @@ function toLinesStr() {
 			if (verseCount == g_verseCount) break;
 			ri++;
 
-			let ref = parse(g_book['code'] + refs[ri][0]);
+			let ref = refs.parse(g_book['code'] + refs[ri][0]);
 			h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 		}
 

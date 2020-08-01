@@ -1,7 +1,7 @@
+import * as bibles from '../common/bibles.js';
 import * as books from '../common/books.js';
-import * as formats from '../common/formats.js';
+import settings from '../common/settings.js';
 import {exportDebug, client} from '../common/utils.js';
-import settings from './settings.js';
 
 let g_resources = {};
 
@@ -15,29 +15,38 @@ export function get(name) {
 	return promise;
 }
 
-export const startingRef = (() => {
-	let params = new URLSearchParams(window.location.search);
-	let ref = params.get('ref');
-	if (!ref || !books.codes.some(k => ref.startsWith(k))) {
-		return;
+/*
+function mergeMap() {
+	for (let bkCode of bible) {
+		bible[bkCode].map = map[bkCode];
 	}
-	return ref;
-})();
+}*/
 
-export const startingBookPromise = (() => {
-	if (!startingRef) return;
-
-	let bkCode = books.codes.filter(k => startingRef.startsWith(k))[0];
-	return get(`${settings.bible}_${bkCode}.json`)
-		.then(bk => {
-			let startingBook = formats.VerseTextToTokenConverter.convertBook(bkCode, bk);
-			bible[bkCode] = startingBook;
-			return startingBook;
-		});
-})();
+let loadPromises = [];
 
 export let bible = {};
-get(settings.bible + '.json').then(b => {
-	bible = formats.VerseTextToTokenConverter.convertBible(b);
+loadPromises.push(get(settings.bible + '_book_token.json').then(b => {
+	bible = b;
+	//if (map) mergeMap();
 	exportDebug('bible', bible);
-});
+}));
+
+export let textToWidth = {};
+loadPromises.push(get('layout.json').then(t => {
+	textToWidth = t;
+}));
+
+/*
+export let strongs = {};
+loadPromises.push(get('strongs.json').then(s => {
+	strongs = s;
+}));
+
+export let map = {};
+loadPromises.push(get('map_lsv_to_tr_book_token.json').then(v => {
+	map = v;
+	if (bible) mergeMap();
+}));
+*/
+
+export let onLoad = Promise.all(loadPromises);

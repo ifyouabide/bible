@@ -1,5 +1,5 @@
-import {Ref, RefRange} from './bible_utils.js';
 import * as books from '../common/books.js';
+import {Ref, RefRange, orderBookTkiPairs} from '../common/refs.js';
 import {setIfUnset} from '../common/utils.js';
 import * as resources from './resources.js';
 
@@ -64,6 +64,7 @@ export function run(str) {
 		out.passages.push(...unitOut.passages);
 		out.hits.push(...unitOut.hits);
 	}
+	out.hits.sort((a, b) => orderBookTkiPairs([a.book, a.tokenIndex], [b.book, b.tokenIndex]));
 	return out;
 }
 
@@ -74,6 +75,7 @@ function parseQuery(str) {
 	let refRanges = RefRange.parseMultiple(inParts.length == 2 ? inParts[1] : 'ge-re');
 	if (!refRanges) return;
 	let units = breakIntoBooks(refRanges);
+	units = units.map(u => u.snapToExisting(resources.bible));
 
 	let ands = inParts[0].split('AND').map(s => s.trim());
 	let matchers = [];
@@ -100,17 +102,17 @@ function breakIntoBooks(refRanges) {
 			if (rr.start.book == rr.end.book) return rr;
 			let inBetween = books.codes.slice(
 				books.codes.indexOf(rr.start.book) + 1, books.codes.indexOf(rr.end.book));
-			return [new RefRange(rr.start, Ref.lastWithPrefix(rr.start.book))]
+			return [new RefRange(rr.start, Ref.parse(rr.start.book))]
 				.concat(inBetween.map(RefRange.parse))
-				.concat([new RefRange(Ref.firstWithPrefix(rr.end.book), rr.end)]);
+				.concat([new RefRange(Ref.parse(rr.end.book), rr.end)]);
 		})
 		.flat()
 		.map(rr => {
 			if (rr.start.book != 'ps' || rr.start.chapter == rr.end.chapter) return rr;
 			let inBetween = psalms.slice(rr.start.chapter + 1, rr.end.chapter);
-			return [new RefRange(rr.start, Ref.lastWithPrefix(rr.start.book + rr.start.chapter + ':'))]
+			return [new RefRange(rr.start, new Ref(rr.start.book, rr.start.chapter, -1))]
 				.concat(inBetween.map(RefRange.parse))
-				.concat([new RefRange(Ref.firstWithPrefix(rr.end.book + rr.end.chapter + ':'), rr.end)]);
+				.concat([new RefRange(new Ref(rr.end.book, rr.end.chapter, -1), rr.end)]);
 		})
 		.flat();
 }

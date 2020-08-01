@@ -14,8 +14,8 @@ export function createElement({id} ={}) {
 			psgElem.showTokensAndSurrounding(
 				psg.book,
 				psg.hits.map(h => h.tokenIndex));
-			psgElem.highlightHits(psg.hits);
 			elem.appendChild(psgElem);
+			psgElem.highlightHits(psg.hits);
 		}
 	};
 

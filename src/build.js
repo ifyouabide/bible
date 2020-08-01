@@ -1,14 +1,14 @@
 import child_process from 'child_process';
+import settings from './common/settings.js';
 import cpy from 'cpy';
 import fs from 'fs';
 import path from 'path';
 
 let appName = process.argv[2];
-let app = {
+let app = Object.assign({
 	ifyouabide: {
 		canonical: 'https://ifyouabide.org',
-		description: '',
-		bible: 'kjv',
+		description: 'ifyouabide.org is a free, fast, and minimalist Bible reader with search capabilities, based on the Literal Standard Version (LSV) Bible.',
 		title: 'ifyouabide.org',
 		favicon: path.join('src', 'app', 'favicon.ico'),
 		analyticsTag: 'UA-172306160-1',
@@ -16,18 +16,29 @@ let app = {
 	lsvbible: {
 		canonical: 'https://read.lsvbible.com',
 		description: 'A reader for the Literal Standard Version (LSV) Bible, with search capabilities.',
-		bible: 'lsv',
 		title: 'The LSV Bible Reader',
 		favicon: path.join('third_party', 'lsv', 'favicon.ico'),
 		analyticsTag: 'G-CXSNEEWJWN',
 	},
-}[appName];
+}[appName], settings[appName]);
 app.name = appName;
 
 let outDir = path.join('build', app.name);
 fs.mkdirSync(outDir, {recursive: true});
 
-function compile() {
+function copy(srcPath, dstPath, substitutions = {}) {
+	let substitutionEntries = Object.entries(substitutions);
+	let encoding = substitutionEntries.length ? 'utf8' : null;
+	let contents = fs.readFileSync(srcPath, encoding);
+	for (let [k, v] of substitutionEntries) {
+		contents = contents.replace(k, v);
+	}
+	fs.mkdirSync(path.dirname(path.join(outDir, dstPath)), {recursive: true});
+	fs.writeFileSync(path.join(outDir, dstPath), contents, encoding);
+}
+
+// JS:
+{
 	let outFile = path.join(outDir, 'main.js');
 	let result = child_process.spawnSync('npm', [
 			'run',
@@ -54,45 +65,49 @@ function compile() {
 	copy(outFile, 'main.js', {'\'use strict\';': `'use strict';window.app='${app.name}';`});
 }
 
-function copy(srcPath, dstPath, substitutions = {}) {
-	let substitutionEntries = Object.entries(substitutions);
-	let encoding = substitutionEntries.length ? 'utf8' : null;
-	let contents = fs.readFileSync(srcPath, encoding);
-	for (let [k, v] of substitutionEntries) {
-		contents = contents.replace(k, v);
-	}
-	fs.mkdirSync(path.dirname(path.join(outDir, dstPath)), {recursive: true});
-	fs.writeFileSync(path.join(outDir, dstPath), contents, encoding);
+// HTML:
+{
+	let head = `
+		<!--\${headStart}-->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=${app.analyticsTag}"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+
+			gtag('config', '${app.analyticsTag}');
+		</script>
+		<title>${app.title}</title>
+		<meta name="description" content="${app.description}">
+		<link rel="canonical" href="${app.canonical}">
+	`;
+	copy(path.join('src', 'app', 'index.html'), 'index.html', {
+		'<!--${headStart}-->': head,
+	});
 }
 
-compile();
+// CSS:
+{
+	let cssContents = fs.readFileSync(path.join('src', 'app', 'bible.css'), 'utf8');
+	let out = [];
+	let deleting = false;
+	for (let line of cssContents.split('\n')) {
+		let beginMatch = line.match(/\$BEGIN\((.*?)\)/);
+		if (beginMatch) {
+			if (beginMatch[1] != app.name) deleting = true;
+			continue;
+		}
+		if (/\$END/.test(line)) {
+			deleting = false;
+			continue;
+		}
+		
+		if (!deleting)	out.push(line);
+	}
 
+	fs.writeFileSync(path.join(outDir, 'bible.css'), out.join('\n'), 'utf8');
+}
 
-let head = `
-	<script async src="https://www.googletagmanager.com/gtag/js?id=${app.analyticsTag}"></script>
-	<script>
-		window.dataLayer = window.dataLayer || [];
-		function gtag(){dataLayer.push(arguments);}
-		gtag('js', new Date());
-
-		gtag('config', '${app.analyticsTag}');
-	</script>
-	<title>${app.title}</title>
-	<meta name="description" content="${app.description}">
-	<link rel="canonical" href="${app.canonical}">
-`;
-copy(path.join('src', 'app', 'index.html'), 'index.html', {
-	'<!--${headStart}-->': head,
-});
-copy(path.join('src', 'app', 'bible.css'), 'bible.css');
 copy(app.favicon, 'favicon.ico');
-
-let base = `<base href="https://storage.googleapis.com/${app.name}/">`;
-copy(
-	path.join('src', 'app', 'index.html'), path.join('mini', 'index.html'), {
-		'<!--${headStart}-->': head + base,
-	});
-
-(async () => {
-    await cpy(`build/resources/${app.bible}*.json`, path.join(outDir, 'resources'));
-})();
+cpy(`build/resources/${app.bible}_book_token.json.br`, path.join(outDir, 'resources'));
+cpy(`build/resources/layout.json.br`, path.join(outDir, 'resources'));

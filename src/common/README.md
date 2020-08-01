@@ -3,7 +3,54 @@
 A bible is a list of books. Note, we generally use the Bible [book codes](book_codes.md) instead
 of names. We use UTF-8 encoding for files.
 
+## Tokens and Equivalent JSON and Text Format
+
+Most writings can be considered as an ordered list of tokens. We define several types of tokens:
+
+* word
+* punctuation
+* layout
+  * space
+  * newLine
+    * indicates an end of any current flow and start of a new line with a certain indentation
+  * newBlock
+    * indicates an end of any current flow and start of a new block with a certain indentation;
+      blocks are wrapped to the same level of indentation
+  * newParagraph
+    * indicates an end of any current flow and start of a new paragraph with a certain indentation;
+      paragraphs are wrapped to same level of indentation (although the first line is slightly
+      indented)
+
+
+Tokens have a simple JSON representation, e.g.:
+
+```js
+{"word": "Hello"}
+{"punctuation": ","}
+{"layout": "space"}
+{"layout": {"newLine": 1}}
+{"layout": {"newBlock": 0}}
+{"layout": {"newParagraph": 0}}
+{"layout": "endLine"}
+```
+
+Tokens also have a simple text representation, using the following rules:
+
+* punctuation is defined as one of the following characters: …,;:.?!-—'‘’"“”(){}[]
+* a word is a sequence of characters containing non-punctuation or punctuation preceded by
+  non-punctuation (this could be improved)
+* for layout:
+  * the space character ' ' is used for a space token
+  * for layout flows:
+    * \n for a new line
+    * \r for a new block
+    * \f for a new paragraph
+  * any of the layout flow characters can be followed by one or more \t characters to specify the
+    level of indent
+
 ## Bible Formats
+
+Bibles 
 
 ### Token Format
 
@@ -27,9 +74,6 @@ Bibles can be represented in a token-centric JSON format that looks like:
       "1:2": 23,
     }
   },
-  "notes": [
-    "jn1:1",
-  ],
 }
 ```
 
@@ -58,42 +102,6 @@ may be partial.
       [[0, 1], 0],
       [2, [1, 2]],
     ],
-    // Computed:
-    "aTokensMap": {
-      "0": 0,
-      "1": 0,
-      "2": 1,
-    },
-    // Computed:
-    "bTokensMap": {
-      "0": 0,
-      "1": 1,
-      "2": 1,
-    },
   },
 }
 ```
-
-### Verse Text Format
-
-Bibles can be represented in a verse and text-centric JSON format that looks like:
-
-```json
-{
-  "ge": {
-    "1:1": "\nIn [the] beginning|0|, God created the heavens and the earth.",
-  },
-  "notes": [
-    "jn1:1",
-  ],
-}
-```
-
-Each verse can have these recognized text markings:
-* [word] to represent a word without a corresponding word in the original text
-* [[phrase]] for a phrase whose inclusion is disputed
-* |number| to link to an embedded note
-* \n for a paragraph
-* \t or || for a line (of poetry), \t\t for double indent
-* \f for a blank line
-* \r for an explicit line end

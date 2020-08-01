@@ -36,9 +36,10 @@ export function onLoad() {
 	});
 }
 
-export function makeElem(str) {
-	let parent = document.createElement('span');
+export function makeElem(str, wrapTag = undefined) {
+	let parent = document.createElement(wrapTag ? wrapTag : 'div');
 	parent.innerHTML = str;
+	if (wrapTag) return parent;
 	return parent.firstElementChild;
 }
 
@@ -61,7 +62,9 @@ export class Timer {
 
 export const client = (() => {
 	let isDesktop = navigator.userAgent.search(/iPad|iPhone|iPod|android|webOS/i) == -1;
+	let isSmallScreen = screen.width < 700 || screen.height < 700;
 	return {
 		isDesktop: isDesktop,
+		isSmallScreen: isSmallScreen,
 	};
 })();

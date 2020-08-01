@@ -1,4 +1,5 @@
-import * as bible_utils from './bible_utils.js';
+import * as bibles from '../common/bibles.js';
+import * as refs from '../common/refs.js';
 import {ifDebug, Timer, exportDebug} from '../common/utils.js';
 import * as resources from './resources.js';
 
@@ -8,37 +9,59 @@ export function createElement({id} = {}) {
 	elem.setAttribute('tabindex', 0);
 	elem.toggleAttribute('data-has-history');
 
+	let fixedHighlightsElem = document.createElement('div');
+	fixedHighlightsElem.style.position = 'relative';
+	elem.appendChild(fixedHighlightsElem);
+
 	let contentElem = document.createElement('div');
 	elem.appendChild(contentElem);
 
 	let spacingElem = document.createElement('div');
-	spacingElem.style.minHeight = '100vh';
+	spacingElem.style.minHeight = '70vh';
+
+	let render;
+	let highlight = {
+		hits: [],
+	};
 
 	elem.show = function(refRange, {scrollToRef} = {}) {
 		ifDebug(() => {
 			console.log('show', refRange.toString(), scrollToRef ? `scroll: ${scrollToRef}` : '')
 		});
 
-		if (!refRange.isWithinSingleBook() || !refRange.exists()) return false;
-		if (scrollTo && !scrollToRef.exists()) return false;
+		if (!refRange.isWithinSingleBook() || !refRange.exists(resources.bible)) return false;
+		if (scrollToRef && !scrollToRef.exists(resources.bible)) return false;
 
-		/*if (!opts.skipCommit && g_bookElem.querySelector('#text') != null) {
-			let params = new URLSearchParams(window.location.search);
-			addHistory(getCurrentRef(), params.get('psg'));
-		}*/
-
-		//let isRange = refRangeStr.indexOf('-') != -1;
-		//let psg = opts.psg || (opts.highlight || isRange ? refRangeStr : null);
-
-		if (elem.getAttribute('data-ref-range') != refRange.toString()) {			
+		if (!render || !render.fixedLayout) {
+			contentElem.innerHTML = '<div style="width:2000px;"></div>';
+		}
+		let fixedWidth = contentElem.offsetWidth;
+		if (!render || !render.fixedLayout || fixedWidth != render.width
+				|| !refRange.equals(render.refRange)) {
 			let timer = new Timer();
-			let html = makeHtmlForRefRange(refRange);
+
+			let bk = resources.bible[refRange.start.book];
+			let limit = refRange.end.seek(resources.bible)
+				? bk['refs'][refRange.end.seek(resources.bible).chapterAndVerse]
+				: bk['tokens'].length;
+			let tkiRange = [bk['refs'][refRange.start.chapterAndVerse], limit];
+			let html = makeFixedLayoutHtml(bk, tkiRange, fixedWidth);
+
 			ifDebug(() => console.log('show [built]', refRange.toString(), timer.mark()));
 			contentElem.innerHTML = html;
 			ifDebug(() => console.log('show [parsed]', refRange.toString(), timer.mark()));
-			elem.setAttribute('data-ref-range', refRange.toString());
-			elem.setAttribute('data-book', refRange.start.book);
+			render = {
+				book: refRange.start.book,
+				fixedLayout: true,
+				refRange: refRange,
+				tkiRange: tkiRange,
+				width: fixedWidth,
+				lineHeight: getContainerLineHeight(elem),
+			};
 			elem.appendChild(spacingElem);
+
+			if (highlight.hits.length) elem.highlightHits(highlight.hits);
+			if (highlight.refRange) elem.highlightPassage(highlight.refRange);
 		}
 
 		if (scrollToRef) {
@@ -46,13 +69,14 @@ export function createElement({id} = {}) {
 		}
 		return true;
 	};
+
 	elem.showTokensAndSurrounding = function(bkCode, tkis, {include = 7} = {}) {
 		if (!tkis.length) return false;
 
 		let pairs = tkis.sort((a, b) => a - b).map(tki =>
 			[
-				bible_utils.seekTkiByWordCount(resources.bible[bkCode], tki, -include),
-				bible_utils.seekTkiByWordCount(resources.bible[bkCode], tki, include),
+				bibles.seekTkiByWordCount(resources.bible[bkCode], tki, -include),
+				bibles.seekTkiByWordCount(resources.bible[bkCode], tki, include),
 			]
 		);
 		let collapsed = [];
@@ -67,42 +91,93 @@ export function createElement({id} = {}) {
 			}
 		}
 
-		let refRange = bible_utils.RefRange.containingTkis(bkCode, collapsed.flat());
+		let refRange = refs.RefRange.containingTkis(resources.bible[bkCode], collapsed.flat());
 		let refRangeHtml = `<a class="ref-range">${refRange}</a>`;
 
 		contentElem.innerHTML = refRangeHtml + '...' + collapsed
-			.map(p => makeHtmlForTokenRange(
+			.map(p => makeDynamicLayoutHtml(
 				resources.bible[bkCode], p, {headings: false, verseNums: false}))
 			.join('...') + '...';
-		elem.setAttribute('data-book', refRange.start.book);
+		render = {
+			book: refRange.start.book,
+			dynamicLayout: true,
+		};
 		return true;
 	};
+
 	elem.highlightHits = function(hits) {
-		Array.from(elem.querySelectorAll('w.highlight'))
-			.forEach(e => e.classList.remove('highlight'));
-		hits.filter(h => h.book == elem.getAttribute('data-book')).forEach(h => {
-			let tokenElem = elem.getElemForToken(h.tokenIndex);
-			if (tokenElem) tokenElem.classList.add('highlight');
-		});
+		highlight.hits = hits;
+		if (!render) return;
+
+		hits = hits.filter(h => h.book == render.book);
+		if (render.dynamicLayout) {
+			Array.from(elem.querySelectorAll('w.highlight'))
+				.forEach(e => e.classList.remove('highlight'));
+			hits.forEach(h => {
+				let tokenElem = elem.getElemForToken(h.tokenIndex);
+				if (tokenElem) tokenElem.classList.add('highlight');
+			});
+		} else {
+			fixedHighlightsElem.innerHTML = '';
+			let lineHeight = render.lineHeight;
+			let childElems = contentElem.children;
+			let li = 0;
+			for (let h of hits) {
+				if (h.tokenIndex < render.tkiRange[0])
+					continue;
+				if (h.tokenIndex >= render.tkiRange[1])
+					break;
+				let startTki;
+				while (li < childElems.length) {
+					startTki = parseInt(childElems[li].getAttribute('data-start-tki'));
+					if (startTki != NaN && h.tokenIndex < startTki) {
+						break;
+					}
+					li++;
+				}
+				while (!childElems[--li].hasAttribute('data-start-tki')) {}
+
+				let y = li * lineHeight;
+				let [x, width] = getLayoutInLine(resources.bible[render.book], childElems[li], h.tokenIndex);
+				let wordElem = document.createElement('fixed-highlight');
+				wordElem.style.top = y + 'px';
+				wordElem.style.left = x + 'px';
+				wordElem.style.width = width + 'px';
+				fixedHighlightsElem.appendChild(wordElem);
+			}
+		}
 	};
-	elem.highlightPassage = function(refOrRange, highlightPassagePermanently = true) {
-		let refRange = refOrRange instanceof bible_utils.Ref
-			? new bible_utils.RefRange(refOrRange, refOrRange) : refOrRange;
-		if (!refRange.isWithinSingleBook() || !refRange.exists()) return false;
+
+	elem.highlightPassage = function(refOrRange, permanent = true) {
+		let refRange = refOrRange instanceof refs.Ref
+			? new refs.RefRange(refOrRange, refOrRange) : refOrRange;
+		if (!refRange.isWithinSingleBook() || !refRange.exists(resources.bible)) return false;
+
+		if (permanent) highlight.refRange = refRange;
+		else delete highlight.refRange;
+
+		if (!render) return;
 
 		Array.from(elem.querySelectorAll('verse-num.highlight, end-of-chapter.highlight'))
 			.forEach(e => e.classList.remove('highlight'));
 		Array.from(elem.querySelectorAll('verse-num.temp-highlight, end-of-chapter.temp-highlight'))
 			.forEach(e => e.classList.remove('temp-highlight'));
 
-		let highlightClass = highlightPassagePermanently ? 'highlight' : 'temp-highlight';
+		let highlightClass = permanent ? 'highlight' : 'temp-highlight';
 		// Need to do this asynchronously so that removing and re-adding a temp-highlight works.
 		window.setTimeout(() => {
-			elem.getElemForVerseNum(refRange.start).classList.add(highlightClass);
-			if (refRange.end.endsChapter()) {
-				elem.getElemForEndOfChapter(refRange.end.chapter).classList.add(highlightClass);
-			} else {
-				elem.getElemForVerseNum(refRange.end.seek()).classList.add(highlightClass);
+			if (refRange.start.book == render.book) {
+				let vElem = elem.getElemForVerseNum(refRange.start);
+				if (vElem) vElem.classList.add(highlightClass);
+			}
+			if (refRange.end.book == render.book) {
+				if (refRange.end.endsChapter(resources.bible)) {
+					let eElem = elem.getElemForEndOfChapter(refRange.end.chapter);
+					if (eElem) eElem.classList.add(highlightClass);
+				} else {
+					let vElem = elem.getElemForVerseNum(refRange.end.seek(resources.bible));
+					if (vElem) vElem.classList.add(highlightClass);
+				}
 			}
 		}, 0);
 	};
@@ -115,31 +190,31 @@ export function createElement({id} = {}) {
 	elem.getElemForEndOfChapter = function(ch) {
 		return elem.querySelector(`end-of-chapter[name="${ch}"]`);
 	}
+
+	let resizeTimeout;
+	window.addEventListener('resize', e => {
+		if (resizeTimeout) window.clearTimeout(resizeTimeout);
+
+		resizeTimeout = window.setTimeout(() => {
+			if (!render || !render.fixedLayout) return;
+			elem.show(render.refRange);
+		}, 1000);
+	});
 	return elem;
 }
 
-function makeHtmlForRefRange(refRange) {
-	if (!refRange.exists()) throw new Error('nonexistent refrange: ' + refRange);
-	if (!refRange.isWithinSingleBook())
-		throw new Error('refrange crossing book boundary: ' + refRange);
-
-	let bk = resources.bible[refRange.start.book];
-	let limit = refRange.end.seek()
-		? bk['refs'][refRange.end.seek().chapterAndVerse] : bk['tokens'].length;
-	return makeHtmlForTokenRange(bk, [bk['refs'][refRange.start.chapterAndVerse], limit]);
-}
-
-function makeHtmlForTokenRange(
-		bk, [tkiStart, tkiEnd],
+// TODO: Reimplement this in terms of flows.
+function makeDynamicLayoutHtml(
+		bk, [startTki, endTki],
 		{headings = true, verseNums = true} = {}) {
-	if (tkiStart < 0 || tkiStart >= bk['tokens'].length) throw new Error('invalid tkiStart');
-	if (tkiEnd < tkiStart || tkiEnd > bk['tokens'].length) throw new Error('invalid tkiEnd');
+	if (startTki < 0 || startTki >= bk['tokens'].length) throw new Error('invalid startTki');
+	if (endTki < startTki || endTki > bk['tokens'].length) throw new Error('invalid endTki');
 
 	let h = [];
-	let refs = Object.entries(bk['refs']);
+	let bkRefs = Object.entries(bk['refs']);
 	let ri = 0;
-	for (; ri < refs.length; ri++) {
-		if (refs[ri][1] >= tkiStart) {
+	for (; ri < bkRefs.length; ri++) {
+		if (bkRefs[ri][1] >= startTki) {
 			break;
 		}
 	}
@@ -147,22 +222,21 @@ function makeHtmlForTokenRange(
 
 	let isPsalm = bk['code'] == 'ps';
 
-	for (let tki = tkiStart; tki < tkiEnd; tki++) {
-		if (ri < refs.length - 1 && tki == refs[ri+1][1]) {
+	for (let tki = startTki; tki < endTki; tki++) {
+		if (ri < bkRefs.length - 1 && tki == bkRefs[ri+1][1]) {
 			ri++;
-			let ref = bible_utils.Ref.parse(bk['code'] + refs[ri][0]);
+			let ref = refs.parse(bk['code'] + bkRefs[ri][0]);
 
 			// Add chapter/psalm heading.
 			if (headings) {
-				if (ri == 0 || ref.chapter != bible_utils.Ref.parseChapter(refs[ri-1][0])) {
+				if (ri == 0 || ref.chapter != refs.parseChapter(bkRefs[ri-1][0])) {
 					if (isPsalm) {
-						if (ref.chapter != 1 && tki != tkiStart) {
+						if (ref.chapter != 1 && tki != startTki) {
 							h.push(`<end-of-chapter name="${ref.chapter - 1}"></end-of-chapter>`);
-							h.push('<br/>'.repeat(5));
 						}
 						h.push(`<psalm-num>PSALM ${ref.chapter}</psalm-num>`);
 					} else {
-						if (ref.chapter != 1 && tki != tkiStart)
+						if (ref.chapter != 1 && tki != startTki)
 							h.push(`<end-of-chapter name="${ref.chapter - 1}"></end-of-chapter>`);
 						h.push(`<chapter-num>CHAPTER ${ref.chapter}</chapter-num>`);
 					}
@@ -174,7 +248,7 @@ function makeHtmlForTokenRange(
 				if (isPsalm) {
 					if (ref.verse == 0) {
 						h.push(`<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek()}">1</verse-num>`);
-					} else if (ref.verse != 1 || ri == 0 || bible_utils.Ref.parseVerse(refs[ri-1][0]) != 0) {
+					} else if (ref.verse != 1 || ri == 0 || refs.parseVerse(bkRefs[ri-1][0]) != 0) {
 						h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 					}
 				} else {
@@ -190,84 +264,237 @@ function makeHtmlForTokenRange(
 			if (tk['layout'] == 'space') {
 				h.push(' ');
 			} else if ('newLine' in tk['layout']) {
-				h.push(`<new-line>||</new-line>`);
+				h.push(`<line-break>||</line-break>`);
 			}
 		} else if ('punctuation' in tk) {
 			h.push(tk['punctuation']);
-		} else if ('translation' in tk) {
-			if ('noOriginal' in tk['translation']) {
-				h.push(tk['translation']['noOriginal'] == 'begin' ? '[' : ']');
-			} else if ('disputed' in tk['translation']) {
-				h.push(tk['translation']['disputed'] == 'begin' ? '[[' : ']]');
-			}
 		}
 	}
 	if (headings) {
-		h.push(`<end-of-chapter name="${bible_utils.Ref.parseChapter(refs[ri][0])}"></end-of-chapter>`);
+		h.push(`<end-of-chapter name="${refs.parseChapter(bkRefs[ri][0])}"></end-of-chapter>`);
 	}
 	return h.join('');
 }
-/*
-function toLinesStr() {
-	let lineWidth = 550;
 
-	let tokens = g_book['tokens'];
-	let h = [];
-	h.push('<div>');
-	let pos = {x: 0, y: 0};
+const SPACE_WIDTH = 4.156;
 
-	let refs = Object.entries(g_book['refs']);
+function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} = {}) {
+	if (startTki < 0 || startTki >= bk['tokens'].length) throw new Error('invalid startTki');
+	if (endTki < startTki || endTki > bk['tokens'].length) throw new Error('invalid endTki');
+
+	let bkRefs = Object.entries(bk['refs']);
 	let ri = 0;
-	for (; ri < refs.length; ri++) {
-		if (refs[ri][1] >= 0) {
+	for (; ri < bkRefs.length; ri++) {
+		if (bkRefs[ri][1] >= startTki) {
 			break;
 		}
 	}
 	ri--;
 
-	h.push('<div style="word-spacing:5px;">');
+	let isPsalm = bk['code'] == 'ps';
+	let flow = [];
+	let flows = [flow];
 
-	let verseCount = -1;
-	for (let tki = 0; tki < tokens.length; tki++) {
-		if (ri < refs.length - 1 && tki == refs[ri+1][1]) {
-			verseCount++;
-			if (verseCount == g_verseCount) break;
+	for (let tki = startTki; tki < endTki; tki++) {
+		if (ri < bkRefs.length - 1 && tki == bkRefs[ri+1][1]) {
 			ri++;
+			let ref = refs.parse(bk['code'] + bkRefs[ri][0]);
 
-			let ref = parse(g_book['code'] + refs[ri][0]);
-			h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
-		}
+			// Start of chapter/psalm:
+			if (ri == 0 || ref.chapter != refs.parseChapter(bkRefs[ri-1][0])) {
+				if (ref.chapter != 1 && tki != startTki) {
+					flow.push({
+						html: `<end-of-chapter name="${ref.chapter - 1}"></end-of-chapter>`,
+						width: 0,
+					});
+				}
 
-		let tk = tokens[tki];
-		let writable;
-		if ('word' in tk) {
-			writable = tk['word'];
-		} else if ('punctuation' in tk) {
-			writable = tk['punctuation'];
-		}
-		if (writable) {
-			h.push(writable);
-			pos.x += tokenToWidth[writable];
-			continue;
-		}
-		if ('layout' in tk) {
-			if (tk['layout'] == 'space') {
-				h.push(' ');
-				if (pos.x + 6 > lineWidth) {
-					pos.x = 0;
-					pos.y += 22;
-					h.push('</div><div>');
+				if (flow.length == 0)
+					flows.pop();
+
+				if (headings) {
+					if (tki != startTki) flows.push('<div>&nbsp;</div>');
+					if (isPsalm)
+						flows.push(`<psalm-num>PSALM ${ref.chapter}</psalm-num>`);
+					else
+						flows.push(`<chapter-num>CHAPTER ${ref.chapter}</chapter-num>`);
+				}
+
+				flow = [];
+				flows.push(flow);
+			}
+
+			// Start of verse:
+			if (verseNums) {
+				if (isPsalm) {
+					if (ref.verse == 0) {
+						flow.push({
+							html: `<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek(resources.bible)}">1</verse-num>`,
+							width: resources.textToWidth[1] * .8 + 1.6,
+							tki: tki,
+						});
+					} else if (ref.verse != 1 || ri == 0 || refs.parseVerse(bkRefs[ri-1][0]) != 0) {
+						flow.push({
+							html: `<verse-num name="${ref}">${ref.verse}</verse-num>`,
+							width: resources.textToWidth[ref.verse] * .7 + 1.6,
+							tki: tki,
+						});
+					}
 				} else {
-					pos.x += 6;
+					flow.push({
+						html: `<verse-num name="${ref}">${ref.verse}</verse-num>`,
+						width: resources.textToWidth[ref.verse] * .7 + 1.6,
+						tki: tki,
+					});
 				}
 			}
 		}
+
+		let tk = bk['tokens'][tki];
+		let word = tk['word'];
+		if (word) {
+			flow.push({
+				html: word,
+				width: resources.textToWidth[word],
+				tki: tki,
+			});
+			continue;
+		}
+		let layout = tk['layout'];
+		if (layout) {
+			if (tk['layout'] == 'space') {
+				flow.push(' ');
+			} else if ('newLine' in tk['layout']) {
+				flow.push(' ');
+				flow.push({
+					html: '<line-break>||</line-break>',
+					width: 11.23,
+					tki: tki,
+				});
+				flow.push(' ');
+			}
+			continue;
+		}
+		let punc = tk['punctuation'];
+		if (punc) {
+			flow.push({
+				html: punc,
+				width: resources.textToWidth[punc],
+				tki: tki,
+			});
+			continue;
+		}
+	}
+	flow.push({
+		html: `<end-of-chapter name="${refs.parseChapter(bkRefs[ri][0])}"></end-of-chapter>`,
+		width: 0,
+	});
+	return flows;
+}
+
+function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
+	let flows = makeFlows(bk, [startTki, endTki]);
+
+	function makeHtml(flow) {
+		let lines = [];
+		let line = {
+			html: '',
+			width: 0,
+			spaces: 0,
+			startTki: flow[0].tki,
+		};
+		let nextAddition;
+
+		function finishLine(skipJustify = false) {
+			let extraSpacing = 0;
+			if (!skipJustify) {
+				let spaces = (line.spaces - (line.html.endsWith('&nbsp;') ? 1 : 0));
+				let width = line.width + spaces * SPACE_WIDTH;
+				extraSpacing = (maxLineWidth - width) / spaces;
+			}
+			lines.push(
+				`<layout-line data-start-tki="${line.startTki}" style="word-spacing:${extraSpacing.toFixed(2)}px">`
+				+ line.html
+				+ '</layout-line>');
+		}
+
+		function commitNext() {
+			let over = line.width + line.spaces * SPACE_WIDTH + nextAddition.width - maxLineWidth;
+			if (over > line.spaces * .1) {
+				finishLine();
+				line = {
+					html: nextAddition.html,
+					width: nextAddition.width,
+					spaces: 0,
+					startTki: nextAddition.startTki,
+				};
+				nextAddition = null;
+			} else {
+				line.html += nextAddition.html;
+				line.width += nextAddition.width;
+				nextAddition = null;
+			}
+		}
+
+		for (let f of flow) {
+			// Consider breaking:
+			// TODO: break on hyphens? (would need to change highlighting too)
+			if (f == ' ' || f.html == '—') {
+				if (nextAddition)
+					commitNext();
+			}
+
+			// Add html:
+			if (f != ' ') {
+				if (!nextAddition) {
+					nextAddition = {
+						html: '',
+						width: 0,
+						startTki: f.tki,
+					};
+				}
+				nextAddition.html += f.html;
+				nextAddition.width += f.width;
+			} else {
+				// Use non-breaking space so that selections involving multiple lines work.
+				line.html += '&nbsp;';
+				line.spaces++;
+			}
+		}
+
+		if (nextAddition)
+			commitNext();
+		if (line.html.length)
+			finishLine(true);
+		return lines.join('');
 	}
 
-	h.push('</div></div>');
+	let h = [];
+	for (let flow of flows) {
+		if (typeof(flow) == 'string') {  // header
+			h.push(flow);
+			continue;
+		}
+
+		h.push(makeHtml(flow));
+	}
 	return h.join('');
 }
-*/
+
+function getLayoutInLine(bk, lineElem, tki) {
+	let spaceWidth = SPACE_WIDTH + parseFloat(lineElem.style.wordSpacing);
+	// Include tki in the requested flow, so that any verse number gets bundled with it.
+	let flow = makeFlows(bk, [parseInt(lineElem.getAttribute('data-start-tki')), tki+1]).slice(-1)[0];
+	// Remove any preceding space (brought in by a newLine token, a bit hacky).
+	let start = (flow[0] == ' ') ? 1 : 0;
+	// Remove the last two, which are the end of chapter mark and tki itself.
+	let x = flow.slice(start, -2)
+		.map(f => f.width !== undefined ? f.width : spaceWidth)
+		.reduce((a, b) => a + b, 0);
+	let width = resources.textToWidth[bk['tokens'][tki]['word']];
+	return [x, width];
+}
+
 function getContainerLineHeight(container) {
 	// getComputedStyle().lineHeight is imprecise
 	var e = document.createElement('div');

@@ -4,12 +4,15 @@ See books.js for the data. These codes are derived from the following simple alg
 
 ## Algorithm to get code from traditional book name.
 
-1. Use the traditional 2-letter codes for the gospels.
+1. Use the traditional 2-letter codes for the gospel authors.
 
 MATTHEW: mt  
 MARK: mk  
 LUKE: lk  
 JOHN: jn  
+1 JOHN: 1jn  
+2 JOHN: 2jn  
+3 JOHN: 3jn  
 
 2. Use the number and first 2 letters if such a code is unique (amongst all books).
 
@@ -55,10 +58,7 @@ TITUS: ti
 HEBREWS: he  
 JAMES: ja  
 1 PETER: 1pe  
-2 PETER: 2pe  
-1 JOHN: 1jn  
-2 JOHN: 2jn  
-3 JOHN: 3jn  
+2 PETER: 2pe 
 REVELATION: re  
 
 3. Use the first letter and the next unique letter (amongst all books starting with that letter),
