@@ -70,6 +70,7 @@ body, select, input, textarea {
 .bible-title {
 	letter-spacing: 1.4px;
 	font-weight: bold;
+	text-decoration: none;
 }
 
 .top-bar, .bar {
@@ -96,9 +97,6 @@ input[type="text"] {
 	padding: 0px;
 }
 
-a {
-	text-decoration: none;
-}
 table, td, th {
 	border: .1rem solid #dddddd;
 	border-collapse: collapse;
@@ -113,6 +111,7 @@ td, th {
 	cursor: pointer;
 	text-decoration: none;
 	margin-right: .3rem;
+	text-decoration: none;
 }
 
 #book {
