@@ -15,12 +15,12 @@
     "http-server": "http-server",
     "build:kjv": "node src/processing/kjv/kjv.js",
     "build:layout": "cpy src/processing/layout/layout.json.br build/resources",
-    "build:lsv:text": "node src/processing/lsv/text.js",
-    "build:lsv:original": "node src/processing/lsv/original.js",
-    "build:lsv": "npm-run-all -s build:lsv:*",
+    "build:lsv": "node src/processing/lsv/text.js",
     "build:strongs": "node src/processing/strongs/strongs.js",
-    "build": "npm-run-all -s build:kjv build:lsv:* build:strongs build:layout",
+    "build:ref-parser": "cpy third_party/openbibleinfo/en_bcv_parser.min.js.br build/resources",
+    "build": "npm-run-all -s build:kjv build:lsv build:strongs build:layout build:ref-parser",
     "serve": "npm-run-all -p \"http-server -- src/app -c-1 --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build  --brotli -p 8090 -c-1\"",
+    "serve-https": "npm-run-all -p \"http-server -- src/app -c-1 --ssl --proxy http://localhost:8080 -p 8000\" \"http-server -- src -p 8080 -c-1 --proxy http://localhost:8090\" \"http-server -- build  --brotli -p 8090 -c-1\"",
     "serve-dev": "http-server .  --brotli -p 8000 -c-1",
     "ifyouabide:build": "node src/build.js ifyouabide",
     "ifyouabide:serve": "http-server build/ifyouabide --brotli -p 8000 -c-1",
@@ -28,6 +28,7 @@
     "ifyouabide:push": "node src/push.js ifyouabide",
     "lsvbible:build": "node src/build.js lsvbible",
     "lsvbible:serve": "http-server build/lsvbible --brotli -p 8000 -c-1",
-    "lsvbible:push": "node src/push.js lsvbible"
+    "lsvbible:push": "node src/push.js lsvbible",
+    "map-to-original:lsv": "node src/processing/map_to_original/build_input.js \"{\\\"name\\\": \\\"lsv\\\", \\\"translation\\\": \\\"build/resources/lsv_verse_text.json\\\", \\\"similar\\\": {\\\"kjv\\\": {\\\"translation\\\": \\\"build/resources/kjv_verse_text.json\\\", \\\"map\\\": \\\"build/resources/map_kjv_to_okjv_verse_token.json\\\", \\\"original\\\": \\\"build/resources/okjv_verse_token.json\\\"}, \\\"esv\\\": {\\\"originalWordTranslationMap\\\": \\\"src/processing/esv/esv_translations.json\\\", \\\"original\\\": \\\"build/resources/oesv_verse_token.json\\\"}}}\""
   }
 }

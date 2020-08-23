@@ -15,19 +15,11 @@ export function get(name) {
 	return promise;
 }
 
-/*
-function mergeMap() {
-	for (let bkCode of bible) {
-		bible[bkCode].map = map[bkCode];
-	}
-}*/
-
 let loadPromises = [];
 
 export let bible = {};
 loadPromises.push(get(settings.bible + '_book_token.json').then(b => {
 	bible = b;
-	//if (map) mergeMap();
 	exportDebug('bible', bible);
 }));
 
@@ -36,17 +28,35 @@ loadPromises.push(get('layout.json').then(t => {
 	textToWidth = t;
 }));
 
-/*
-export let strongs = {};
-loadPromises.push(get('strongs.json').then(s => {
-	strongs = s;
-}));
-
-export let map = {};
-loadPromises.push(get('map_lsv_to_tr_book_token.json').then(v => {
-	map = v;
-	if (bible) mergeMap();
-}));
-*/
-
 export let onLoad = Promise.all(loadPromises);
+
+export let onParserLoad = new Promise(fn => {
+	let scriptElem = document.createElement('script');
+	scriptElem.onload = fn;
+	scriptElem.src = 'resources/en_bcv_parser.min.js';
+	document.head.appendChild(scriptElem);
+});
+
+export let original = null;
+export let bibleToOriginal = null;
+export let strongs = null;
+export let isOriginalLoaded = false;
+export let onOriginalLoad = null;
+
+let originalLoadPromises = [];
+if (settings.original) {
+	originalLoadPromises.push(get(settings.original + '_book_token.json').then(v => {
+		original = v;
+	}));
+
+	originalLoadPromises.push(get(`map_${settings.bible}_to_${settings.original}_book_token.json`)
+		.then(v => {
+			bibleToOriginal = v;
+		}));
+
+	originalLoadPromises.push(get('strongs.json').then(v => {
+		strongs = v;
+	}));
+
+	onOriginalLoad = Promise.all(originalLoadPromises).then(() => isOriginalLoaded = true);
+}

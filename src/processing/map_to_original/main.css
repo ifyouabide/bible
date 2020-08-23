@@ -1,0 +1,21 @@
+body {
+	font-family: 'Open Sans';
+}
+.link {
+	cursor: pointer;
+	user-select: none;
+	color: #AA0000;
+	font-weight: bold;
+}
+.verse-block {
+	display: grid;
+	grid-template-columns: repeat(10, 1fr);
+	grid-gap: 1rem;
+}
+.entry {
+	padding: .2rem;
+	border-bottom: 1px solid black;
+}
+.error {
+	background-color: #faa;
+}

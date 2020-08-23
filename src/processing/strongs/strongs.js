@@ -3,9 +3,16 @@ import {compress} from '../utils.js';
 
 function entryFromColumns(l, keyColumn, nameToColumn) {
 	let columns = l.split('\t');
+	function format([k, col]) {
+		let v = columns[col];
+		if (v) {
+			v = v.split(',')[0];
+		}
+		return [k, v];
+	}
 	return [
 		columns[keyColumn],
-		Object.fromEntries(Object.entries(nameToColumn).map(([k, col]) => [k, columns[col]])),
+		Object.fromEntries(Object.entries(nameToColumn).map(format)),
 	];
 }
 
@@ -33,6 +40,10 @@ let strongs = Object.fromEntries(
 	Object.entries(hebrew).concat(Object.entries(greek))
 		.map(e => [e[0].replace(/^(.)0+/, '$1'), e[1]]));
 let contents = JSON.stringify(strongs, null, '\n').replace(/\n\n+/g, '\n');
+fs.writeFileSync(
+	'build/resources/strongs.json',
+	contents,
+	'utf8');
 fs.writeFileSync(
 	'build/resources/strongs.json.br',
 	compress(contents),

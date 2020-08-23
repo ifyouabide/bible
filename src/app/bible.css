@@ -37,6 +37,24 @@ fixed-highlight {
 	margin-top: 1.3rem;
 	user-select: none;
 }
+interlinear-line {
+	display: block;
+	color: #aaa;
+}
+interlinear-line.greek {
+	font-family: 'Source Sans Pro';
+	font-size: .6875rem;
+}
+interlinear-line.hebrew {
+	font-family: 'Cardo';
+	font-size: .8125rem;
+}
+interlinear-word {
+	position: relative;
+	cursor: pointer;
+	user-select: none;
+	white-space: nowrap; /* a few strongs, like "ἵνα μή" are actually multiple words */
+}
 verse-num.highlight, end-of-chapter.highlight {
 	background-color: #44dd44;
 	border-radius: .3rem;
@@ -56,7 +74,7 @@ verse-num.temp-highlight, end-of-chapter.temp-highlight {
 	animation-timing-function: ease-in;
 	animation-fill-mode: forwards;
 }
-layout-line {
+main-line {
 	display: inline-block;
 	width: 44rem;
 }
@@ -67,10 +85,8 @@ body, select, input, textarea {
 	font-size: 1rem;
 }
 
-.bible-title {
-	letter-spacing: 1.4px;
-	font-weight: bold;
-	text-decoration: none;
+.top-bar {
+	border-bottom: 1.5px solid #aaa;
 }
 
 .top-bar, .bar {
@@ -78,13 +94,92 @@ body, select, input, textarea {
 	user-select: none;
 }
 
-.top-bar {
-	border-bottom: 1.5px solid #aaa;
-}
-
 .button {
+	display:inline-block;
+
 	user-select: none;
 	cursor: pointer;
+	padding: 0em .5em;
+	border-radius: .2rem;
+
+	transition: all 0.2s;
+}
+
+.bible-title {
+	letter-spacing: 1.4px;
+	text-decoration: none;
+}
+
+.book-select-button,.book-select-header {
+	padding: .25rem .75rem;
+	font-size: .8125rem;
+	user-select: none;
+	border-left: 1px solid #ccc;
+}
+
+.book-select-button,.chapter-select-button {
+	cursor: pointer;
+}
+
+.book-select-button:hover, .chapter-select-button:hover {
+	background-color: #ddd;
+}
+
+.book-select-header {
+	font-weight: bold;
+	border-top: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
+}
+
+.chapter-select-grid {
+	grid-template-columns: repeat(5, 1fr);
+	padding: .5rem;
+}
+
+.chapter-select-button {
+	padding: .5rem 1rem;
+	font-size: .8125rem;
+	user-select: none;
+}
+
+.menu {
+	position:absolute;
+	top: -.25rem;
+	border: 1px solid gray;
+	background-color: #fff;
+	box-shadow: 1px 2px #777;
+	max-height: 50vh;
+	overflow-y: scroll;
+	z-index: 100;
+
+	/* Needed for ios to prevent slow/unsmooth scrolls */
+	-webkit-overflow-scrolling: touch;
+}
+
+.menu-option {
+	user-select: none;
+	padding:.3rem;
+	padding-left:2rem;
+	padding-right:2rem;
+	font-size: .825rem;
+}
+
+.menu-option + .menu-option {
+	padding-top: 0rem;
+}
+
+.menu-option-button {
+	cursor: pointer;
+}
+
+.menu-option-button:hover {
+	background-color: #ddd;
+}
+
+hr {
+	margin: 0px;
+	border: 0px;
+	border-top: 1px solid #ccc;
 }
 
 select {
@@ -125,6 +220,9 @@ td, th {
 
 	line-height: 1.8rem;
 	border: 1.5px solid #aaa;
+
+	/* Needed for ios to prevent slow/unsmooth scrolls */
+	-webkit-overflow-scrolling: touch;
 }
 
 #resultPanel {
@@ -134,27 +232,33 @@ td, th {
 
 	overflow-y: scroll;
 	overflow-x: hidden;
+
+	/* Needed for ios to prevent slow/unsmooth scrolls */
+	-webkit-overflow-scrolling: touch;
 }
 
 /************ Site-specifc ************/
 
-select:hover, select:focus {
+.button.theme:hover {
 /* $BEGIN(ifyouabide) */
-	color: #b03333;
-	background-color: white;
+	color: #000;
+	stroke: #000;
+	background-color: #f7f7f7;
 /* $END */
 /* $BEGIN(lsvbible) *
 	background-color: #fff;
 /* $END */
 }
 
-.theme, .top-bar, .bar, select {
+.theme, .top-bar, .bar {
 /* $BEGIN(ifyouabide) */
 	background-color: #883333;
 	color: #f7f7f7;
+	stroke: #f7f7f7;
 /* $END */
 /* $BEGIN(lsvbible) *
 	background-color: #ffbd2f;
 	color: #222;
+	stroke: #222;
 /* $END */
 }

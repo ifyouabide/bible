@@ -33,58 +33,65 @@ function toVerse2(ref, contents) {
 	let text = '';
 	let origTokens = {};
 	let map = [];
+	let splits = {};
 
 	function process(node) {
 		if (node.name == 'note') return;
 		if (node.name == 'title' && ref.chAndVerse.startsWith('119')) return;
 
 		let tkiStart = -1;
+		let splitKey;
 		let origTkis = [];
 		// There are 4 places in Ezra without a lemma, not sure why.
 		if (node.name == 'w' && node.attr && node.attr.lemma) {
-			let strongs = node.attr.lemma.split(' ')
-				.filter(p => p.startsWith('strong:'))
-				.map(p => p.split(':')[1])
-				.map(p => p[0] + parseInt(p.slice(1)));
-
-			let words = node.attr.lemma.split(' ')
-				.filter(p => p.startsWith('lemma.TR:'))
-				.map(p => p.split(':')[1]);
-			if (words.length && words.length != strongs.length) {
-				if (ref.book + ref.chAndVerse == '1co15:35') {
-					strongs = ['G3498'];
-				} else if (ref.book + ref.chAndVerse == '2co8:10') {
-					strongs.push('G3778');
-				} else {
-					throw new Error('mismatch between strong and word count ' + ref.book + ref.chAndVerse + ' ' + strongs + '!=' + words);
-				}
-			}
-
-			let morphs = [];
-			if (node.attr.morph) {
-				morphs = node.attr.morph.split(' ')
-					.map(p => Object.fromEntries([p.split(':')]));
-				if (morphs.length != strongs.length) {
-					morphs = [];
-					//console.log('strong/morph mismatch', node.attr.lemma, node.attr.morph);
-				}
-			}
-
-			if (node.attr.src) {
-				origTkis = node.attr.src.trim().split(' ').map(p => parseInt(p) - 1);
-				if (origTkis.length != strongs.length) {
-					throw new Error('mismatch between strong and srcs count ' + ref.book + ref.chAndVerse + ' ' + strongs + '!=' + origTkis);
-				}
-			} else {
-				origTkis = strongs.map((_, i) => Object.keys(origTokens).length + i);
-			}
-			for (let i in origTkis) {
-				let tuple = morphs[i] || {};
-				tuple['strong'] = strongs[i];
-				if (words[i]) tuple['word'] = words[i];
-				origTokens[origTkis[i]] = tuple;
-			}
 			tkiStart = bibles.getTokenCount(text);
+			if (node.attr.type && node.attr.type.startsWith('x-split-')) {
+				splitKey = node.attr.type;
+			}
+			if (!(splitKey in splits)) {
+				let strongs = node.attr.lemma.split(' ')
+					.filter(p => p.startsWith('strong:'))
+					.map(p => p.split(':')[1])
+					.map(p => p[0] + parseInt(p.slice(1)));
+
+				let words = node.attr.lemma.split(' ')
+					.filter(p => p.startsWith('lemma.TR:'))
+					.map(p => p.split(':')[1]);
+				if (words.length && words.length != strongs.length) {
+					if (ref.book + ref.chAndVerse == '1co15:35') {
+						strongs = ['G3498'];
+					} else if (ref.book + ref.chAndVerse == '2co8:10') {
+						strongs.push('G3778');
+					} else {
+						throw new Error('mismatch between strong and word count ' + ref.book + ref.chAndVerse + ' ' + strongs + '!=' + words);
+					}
+				}
+
+				let morphs = [];
+				if (node.attr.morph) {
+					morphs = node.attr.morph.split(' ')
+						.map(p => Object.fromEntries([p.split(':')]));
+					if (morphs.length != strongs.length) {
+						morphs = [];
+						//console.log('strong/morph mismatch', node.attr.lemma, node.attr.morph);
+					}
+				}
+
+				if (node.attr.src) {
+					origTkis = node.attr.src.trim().split(' ').map(p => parseInt(p) - 1);
+					if (origTkis.length != strongs.length) {
+						throw new Error('mismatch between strong and srcs count ' + ref.book + ref.chAndVerse + ' ' + strongs + '!=' + origTkis);
+					}
+				} else {
+					origTkis = strongs.map((_, i) => Object.keys(origTokens).length + i);
+				}
+				for (let i in origTkis) {
+					let tuple = morphs[i] || {};
+					tuple['strong'] = strongs[i];
+					if (words[i]) tuple['word'] = words[i];
+					origTokens[origTkis[i]] = tuple;
+				}
+			}
 		}
 
 		if (node.text) {
@@ -106,7 +113,15 @@ function toVerse2(ref, contents) {
 					engTkis.push(tki);
 				}
 			}
-			map.push([engTkis, origTkis]);
+			if (!splitKey || !(splitKey in splits)) {
+				let entry = [engTkis, origTkis];
+				map.push(entry);
+				if (splitKey) {
+					splits[splitKey] = entry;
+				}
+			} else {
+				splits[splitKey][0].push(...engTkis);
+			}
 		}
 	}
 
@@ -178,5 +193,5 @@ function toBible(contents) {
 let contents = fs.readFileSync(path.join('third_party', 'kjv', 'entries.txt'), 'utf8');
 let namedBibles = bibles.verse.unmergeNamed(toBible(contents));
 writeBibleFilesSync('kjv', namedBibles.eng);
-writeBibleFilesSync('tr', namedBibles.orig);
-writeMapFilesSync(namedBibles.map, 'kjv', namedBibles.eng, 'tr', namedBibles.orig);
+writeBibleFilesSync('okjv', namedBibles.orig);
+writeMapFilesSync(namedBibles.map, 'kjv', namedBibles.eng, 'okjv', namedBibles.orig);
