@@ -8,6 +8,7 @@ From:
 | --- | --- | --- |
 | TBESG.txt | https://raw.githubusercontent.com/tyndale/STEPBible-Data/master/TBESG%20-%20Tyndale%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Greek%20-%20TyndaleHouse.com%20STEPBible.org%20CC%20BY-NC.txt | ec00780b3546daad5e6c3b7b8b4e5c16213e0f81 |
 | TBESH.txt | https://github.com/tyndale/STEPBible-Data/raw/master/TBESH%20-%20Tyndale%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Hebrew%20-%20TyndaleHouse.com%20STEPBible.org%20CC%20BY-NC.txt | ec00780b3546daad5e6c3b7b8b4e5c16213e0f81 |
+| TTESV.txt | https://raw.githubusercontent.com/tyndale/STEPBible-Data/master/TTESV%20-%20Tyndale%20Translation%20tags%20for%20ESV%20-%20TyndaleHouse.com%20STEPBible.org%20CC%20BY-NC.txt | ec00780b3546daad5e6c3b7b8b4e5c16213e0f81 |
 
 ## About/License
 

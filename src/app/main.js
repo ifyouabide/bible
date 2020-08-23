@@ -10,6 +10,10 @@ import * as resultUi from './result_ui.js';
 // This is now in index.html, but keep here until all mini users have updated.
 document.head.appendChild(
 	makeElem('<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">'));
+document.head.appendChild(
+	makeElem('<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro">'));
+document.head.appendChild(
+	makeElem('<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Cardo">'));
 
 let g_isDualPanel = client.isDesktop || window.innerWidth > 900;
 let g_isBookReadScope = client.isDesktop || !client.isSmallScreen;
@@ -23,6 +27,8 @@ let g_hasZeroWidthScrollbars = (() => {
 	document.body.removeChild(testElem);
 	return zeroWidth;
 })();
+let g_popups = [];
+let g_doShowInterlinear = false;
 
 let g_noAppearanceStyle = `
 	appearance: none;
@@ -43,10 +49,13 @@ let g_readPanel, g_bookElem;
 			style="
 				height:100%;
 				padding-top:1.8rem;
+				padding-left:2rem;
+				padding-right:2rem;
 				overflow-y:auto;
+				-webkit-overflow-scrolling: touch;
 				border: 1.5px solid #aaa;">
 			<center><h2>${settings.welcome}</h2></center>
-			<div style="padding:1rem;">
+			<div>
 				${basicInstructionsHtml}
 				<br/>
 				${settings.about}
@@ -67,47 +76,47 @@ let g_readPanel, g_bookElem;
 				class="bar"
 				style="
 					justify-content:space-between;
-					min-height:2rem;
-					padding-left:2rem;
-					padding-right:${g_hasZeroWidthScrollbars ? 2 : 3}rem;">
-				<span style="width:8rem;" class="theme">
-					<select
-						id="bookSelect"
-						style="
-							${client.isDesktop ? '' : g_noAppearanceStyle}
-							height:2rem;
-							width:4rem;">
-						<option>Book</option>
-						${books.codes
-							.map(bk => `<option name="${bk}">${books.codeToName[bk]}</option>`)
-							.join('')}
-					</select>
-					<span id="widthCalculator" style="visibility:hidden;position:absolute;"></span>
-				</span>
-				<a
-					href="${settings.bibleLink}" rel="noopener" class="bible-title theme"
-					style="padding-top:.3rem;">${settings.bible.toUpperCase()}
-				</a>
-				<span style="display:inline-block;width:8rem;">
-					<input
-						id="refInput" type="text" class="theme" maxlength="11"
-						style="
-							display:none;
-							float:right;
-							width:6rem;
-							height:2rem;
-							text-align:right;
-						">
-					<select
-						id="chapterSelect"
-						style="
-							display:none;
-							${client.isDesktop ? '' : g_noAppearanceStyle}
-							float:right;
-							height:2rem;
-						"></select>
+					padding-top:.5rem;
+					padding-bottom:.5rem;
+					padding-left:1rem;
+					padding-right:${g_hasZeroWidthScrollbars ? 1 : 2}rem;
+					${window.innerWidth < 360 ? 'font-size:.8rem;' : ''}
+					">
+				<span style="flex-basis:9rem;">	
+					<span id="bookAndChapterMenuButton" class="button theme">
+						Select Book
+						<svg style="width:1rem;height:.9rem;stroke-width:.1rem;fill:none;">
+						  <polyline points="4 7 8 11 12 7"/>
+						</svg>
 					</span>
 				</span>
+				<a href="${settings.bibleLink}" rel="noopener" class="bible-title theme">
+					${settings.bible.toUpperCase()}
+				</a>
+				<span style="flex-basis:9rem;">
+					<span id="menuButton" class="button theme" style="float:right;">
+						Menu
+					</span>
+				</span>
+			</div>
+			<div style="position:relative;">
+				<div
+					id="bookAndChapterMenuPanel"
+					class="menu"
+					style="display:none;">
+				</div>
+			</div>
+			<div style="position:relative;">
+				<div
+					id="menuPanel"
+					class="menu"
+					style="display:none;">
+				</div>
+			</div>
+			<div style="position:relative;">
+				<div id="goToMenuPanel" class="menu" style="display:none;overflow-y:hidden;">
+					<input id="goToInput" type="text" maxlength="20" style="padding:.25rem 1rem;">
+				</div>
 			</div>
 			${introHtml}
 			<div 
@@ -116,17 +125,17 @@ let g_readPanel, g_bookElem;
 					display:none;
 					padding-top:.3rem;
 					height:1.7rem;
-					padding-left:2rem;
-					padding-right:${g_hasZeroWidthScrollbars ? 2 : 3}rem;">
-				<span id="prevChapterButton" class="button" style="visibility:hidden;">
+					padding-left:1rem;
+					padding-right:${g_hasZeroWidthScrollbars ? 1 : 2}rem;">
+				<span id="prevChapterButton" class="button theme" style="visibility:hidden;">
 					<<
 				</span>
 				<span style="flex-grow:1;text-align:center;">
-					<span id="openSearchButton" class="button">
+					<span id="openSearchButton" class="button theme">
 						Search
 					</span>
 				</span>
-				<span id="nextChapterButton" class="button" style="visibility:hidden;">
+				<span id="nextChapterButton" class="button theme" style="visibility:hidden;">
 					>>
 				</span>
 			</div>
@@ -137,60 +146,199 @@ let g_readPanel, g_bookElem;
 		return g_readPanel.querySelector('#' + idStr);
 	}
 
-	// Book select:
+	// Book/chapter select menu:
 	{
-		id('bookSelect').children[0].disabled = true;
-		id('bookSelect').addEventListener('change', e => {
-			read(e.target.children[e.target.selectedIndex].getAttribute('name'));
-		}, false);
+		let menuPanel = id('bookAndChapterMenuPanel');
+		registerPopup(menuPanel);
+		menuPanel.style.gridTemplateColumns = '1fr';
+
+		function bookSelectButton(bkCode) {
+			let elem = makeElem(`
+				<div class="book-select-button">${books.codeToName[bkCode]}</div>`);
+			elem.addEventListener('click', e => {
+				if (books.codeToChapterCount[bkCode] == 1) {
+					menuPanel.style.display = 'none';
+					read(bkCode + '1');
+				} else {
+					elem.nextSibling.style.display = (elem.nextSibling.style.display == 'none' ? 'grid' : 'none');
+					elem.nextSibling.scrollIntoViewIfNeeded();
+				}
+			});
+			return elem;
+		}
+		let ri = 0;
+		menuPanel.append(
+			makeElem('<div class="book-select-header">Old Testament</div>'));
+		for (let bkCode of books.codes) {
+			if (bkCode == 'mt') {
+				menuPanel.append(makeElem('<div class="book-select-header">New Testament</div>'));
+			}
+			let bkButton = bookSelectButton(bkCode);
+
+			let chs = Array.from(Array(books.codeToChapterCount[bkCode]), (_, i) => i + 1);
+			let versesGrid = makeElem(`
+				<div class="chapter-select-grid" style="display:none;">
+					${chs.map(ch => '<span class="chapter-select-button">' + ch + '</span>').join('')}
+				</div>
+			`);
+			versesGrid.addEventListener('click', e => {
+				menuPanel.style.display = 'none';
+				read(bkCode + e.target.innerText);
+			});
+
+			menuPanel.append(bkButton, versesGrid);
+		}
+
+		id('bookAndChapterMenuButton').addEventListener('click', e => {
+			let wasClosed = menuPanel.style.display == 'none';
+			closePopups();
+			if (wasClosed) {
+				e.stopPropagation();
+				menuPanel.style.display = 'grid';
+				let bookSelectButton = Array.from(menuPanel.querySelectorAll('.book-select-button'))
+					.find(button => button.innerText == e.target.innerText);
+				Array.from(menuPanel.querySelectorAll('.chapter-select-grid'))
+					.forEach(grid => {
+						let shouldShow = grid.previousSibling == bookSelectButton
+							&& grid.childElementCount > 1;
+						grid.style.display = (shouldShow ? 'grid' : 'none');
+					});
+				if (bookSelectButton) {
+					bookSelectButton.scrollIntoView();
+				}
+			}
+		});
 	}
 
-	if (g_isBookReadScope) {
-		// Reference input:
-		let refInput = id('refInput');
-		refInput.style.display = '';
-		refInput.addEventListener('input', e => {
-			read(e.target.value, {skipFocus: true, highlightPassageTemporarily: true});
+	// Main menu:
+	{
+		let menuPanel = id('menuPanel');
+		registerPopup(menuPanel);
+		menuPanel.style.right = (2 + g_hasZeroWidthScrollbars ? 1 : 0) + 'rem';
+
+		let searchButton = makeElem(`<div class="menu-option menu-option-button">Search<span style="float:right;">?<span></div>`);
+		searchButton.addEventListener('click', e => {openSearch(); closePopups();});
+		
+		let goToButton = makeElem(`<div class="menu-option menu-option-button">Go To<span style="float:right;">/<span></div>`);
+		goToButton.addEventListener('click', e => {openGoTo();});
+		window.addEventListener('keypress', e => {
+			if (isEditing()) return;
+			if (e.key == '/') {
+				openGoTo();
+				e.preventDefault();  // Firefox opens a quick find otherwise.
+			}
 		});
-		refInput.addEventListener('keydown', e => {
+
+		let nextChButton = makeElem(`<div class="menu-option menu-option-button">Next Chapter<span style="float:right;">n<span></div>`);
+		nextChButton.addEventListener('click', e => {goToNextChapter(1); closePopups();});
+		let prevChButton = makeElem(`<div class="menu-option menu-option-button">Previous Chapter<span style="margin-left:1rem;float:right;">p<span></div>`);
+		prevChButton.addEventListener('click', e => {goToNextChapter(-1); closePopups();});
+		menuPanel.append(
+			searchButton,
+			makeElem('<hr>'),
+			goToButton,
+			nextChButton,
+			prevChButton,
+			makeElem('<hr>'));
+		if (bibleUi.doesSupportInterlinear) {
+			let interlinearSelect = makeElem(`
+				<select style="font-size:.7rem;margin-right:1rem;">
+					<option>None</option>
+					<option>Greek Lemma (NT)</option>
+				</select>
+			`);
+			interlinearSelect.addEventListener('change', e => {
+				g_doShowInterlinear = (e.target.selectedIndex == 1);
+				g_bookElem.setDoShowInterlinear(g_doShowInterlinear);
+			});
+			window.addEventListener('keypress', e => {
+				if (isEditing()) return;
+				if (e.key == 'i') {
+					g_doShowInterlinear = !g_doShowInterlinear;
+					interlinearSelect.selectedIndex = (g_doShowInterlinear ? 1 : 0);
+					g_bookElem.setDoShowInterlinear(g_doShowInterlinear);
+				} 
+			});
+			let interlinearElem = makeElem('<div class="menu-option"></div>');
+			interlinearElem.append(
+				makeElem('<span>Interlinear:</span>'),
+				interlinearSelect,
+				makeElem('<span style="float:right;padding-right:.2rem;">i<span>'));
+			menuPanel.append(
+				interlinearElem,
+				makeElem('<hr>'));
+		}
+		let aboutButton = makeElem(`<div class="menu-option menu-option-button">About</div>`);
+		aboutButton.addEventListener('click', e => {openAbout(); closePopups();});
+		menuPanel.append(aboutButton);
+
+		id('menuButton').addEventListener('click', e => {
+			let wasClosed = menuPanel.style.display == 'none';
+			closePopups();
+			if (wasClosed) {
+				menuPanel.style.display = '';
+				e.stopPropagation();
+			}
+		});
+	}
+
+	// GoTo menu panel:
+	{
+		let menuPanel = id('goToMenuPanel');
+		registerPopup(menuPanel);
+		let goToInput = id('goToInput');
+		goToInput.addEventListener('input', e => {
+			resources.onParserLoad.then(() => {
+				goTo(e.target.value);
+			});
+		});
+		goToInput.addEventListener('keydown', e => {
 			if (e.key == 'Enter') {
+				goTo(e.target.value);
+			}
+			if (e.key == 'Enter' || e.key == 'Escape') {
+				closePopups();
 				g_bookElem.focus();
 			}
 		});
-		window.addEventListener('keydown', e => {
-			if (!isEditing() && e.key == '/') {
-				refInput.focus();
-				refInput.select();
-				e.preventDefault();
+		function goTo(str) {
+			let parser = new bcv_parser();
+			parser.set_options({
+				'versification_system': 'kjv',
+				'passage_existence_strategy': 'b',
+				'book_alone_strategy': 'first_chapter',
+			});
+			parser.parse(str);
+			let osisRef = parser.osis();
+			if (osisRef) {
+				let osisBk = osisRef.split('.', 1)[0];
+				let ref = books.osisToCode[osisBk] + osisRef.slice(osisBk.length + 1).replace('.', ':');
+				let specificVerse = refs.parse(ref).verse != -1;
+				read(ref, {skipFocus: true, highlightPassageTemporarily: specificVerse});
 			}
-		});
-	} else {
-		// Chapter select:
-		id('chapterSelect').style.display = '';
-		id('chapterSelect').addEventListener('change', e => {
-			read(e.target.children[e.target.selectedIndex].getAttribute('name'));
-		});
+		}
 	}
 
 	// Bottom bar:
 	{
 		id('bottomReaderBar').style.display = 'flex';
-		id('prevChapterButton').addEventListener('click', e => {
-			if (g_isBookReadScope) {
-				read(seekChapter(-1));
-			} else {
-				read(e.target.getAttribute('name'));
+		id('prevChapterButton').addEventListener('click', e => goToNextChapter(-1));
+		id('nextChapterButton').addEventListener('click', e => goToNextChapter(1));
+		window.addEventListener('keypress', e => {
+			if (isEditing()) return;
+
+			if (e.key == 'p') {
+				goToNextChapter(-1)
+			} else if (e.key == 'n') {
+				goToNextChapter(1);
 			}
 		});
-		id('nextChapterButton').addEventListener('click', e => {
-			if (g_isBookReadScope) {
-				read(seekChapter(1));
-			} else {
-				read(e.target.getAttribute('name'));
-			}
-		});	
-		id('openSearchButton').addEventListener('click', e => {
-			openSearch();
+
+		id('openSearchButton').addEventListener('click', e => openSearch());
+		window.addEventListener('keyup', e => {
+			if (isEditing()) return;
+
+			if (e.key == '?') openSearch();
 		});
 	}
 
@@ -206,6 +354,11 @@ let g_readPanel, g_bookElem;
 	} else {
 		g_readPanel.style.display = 'flex';
 	}
+}
+
+function goToNextChapter(dir) {
+	let ref = getNextChapter(dir);
+	if (ref) read(ref);
 }
 
 function isChapterHeadingVisible(num = 0) {
@@ -234,26 +387,30 @@ function getCurrentChapter() {
 	return refs.parse(book + lastCh);
 }
 
-function getFirstVisibleRef() {
-	let scroll = g_bookElem.scrollTop;
-	for (let elem of g_bookElem.querySelectorAll('verse-num')) {
-		if (elem.offsetTop - scroll - 32 > 0) {
-			return refs.parse(elem.getAttribute('name'));
-		}
-	}
-}
-
-function seekChapter(dir = 1) {
+function getNextChapter(dir = 1) {
 	let ref = getCurrentChapter();
 	if (!ref) return;
 
-	let isHeadingVisible = isChapterHeadingVisible(ref.chapter);
-	if (dir == -1) {
-		if (isHeadingVisible)
-			return ref.book + ((ref.chapter - 1) || 1) + ':1';
-		return ref.book + ref.chapter + ':1';
+	function get() {
+		if (!g_isBookReadScope) {
+			return ref.book + Math.min(Math.max(1, ref.chapter + dir), books.codeToChapterCount[ref.book]);
+		}
+
+		let isHeadingVisible = isChapterHeadingVisible(ref.chapter);
+		if (dir == -1) {
+			if (isHeadingVisible)
+				return ref.book + ((ref.chapter - 1) || 1);
+			return ref.book + ref.chapter;
+		}
+		return ref.book + Math.min(ref.chapter + 1, books.codeToChapterCount[ref.book]);
 	}
-	return ref.book + Math.min(ref.chapter + 1, refs.getChapterCount(resources.bible[ref.book])) + ':1';
+	let next = get();
+	if (refs.parseChapter(next) == ref.chapter) {
+		if (!g_isBookReadScope) return;
+		if (dir == 1) return;
+		if (dir == -1 && ref.chapter == 1) return;		
+	}
+	return next + ':1';
 }
 
 function read(str, {highlightPassageTemporarily = false, highlightPassagePermanently = false, skipFocus = false} = {}) {
@@ -274,37 +431,23 @@ function read(str, {highlightPassageTemporarily = false, highlightPassagePermane
 		g_isBookReadScope ? refRange.start.book : (refRange.start.book + refRange.start.chapter + ':'))
 			.snapToExisting(resources.bible);
 
-	if (g_bookElem.show(readRange, {scrollToRef: refRange.start})) {
+	if (g_bookElem.show(readRange, {scrollToRef: refRange.start, interlinear: g_doShowInterlinear})) {
 		if (highlightPassageTemporarily || highlightPassagePermanently)
 			g_bookElem.highlightPassage(
 				str.indexOf('-') != -1 ? refRange : refRange.start, highlightPassagePermanently);
 
-		$id('bookSelect').selectedIndex = books.codes.indexOf(refRange.start.book) + 1;
-		$id('widthCalculator').innerText = books.codeToName[refRange.start.book];
-		// Adding 12 for safari, 12 for the arrow.
-		let arrow = client.isDesktop ? 12 : 0;
-		$id('bookSelect').style.width = $id('widthCalculator').offsetWidth + 12 + arrow + 'px';
-
+		$id('bookAndChapterMenuButton').innerText = books.codeToName[refRange.start.book];
+		
 		if (g_isBookReadScope) {
-			if ($id('refInput') != document.activeElement) {
-				$id('refInput').value = refRange.start.toString();
-			}
 			$id('prevChapterButton').style.visibility = (readRange.end.chapter > 1)
 				? 'visible' : 'hidden';
 			$id('nextChapterButton').style.visibility = (readRange.end.chapter > 1)
 				? 'visible' : 'hidden';
 		} else {
-			let chapterCount = refs.getChapterCount(resources.bible[readRange.start.book]);
-			$id('chapterSelect').innerHTML = Array.from(Array(chapterCount), (_, i) => i + 1)
-				.map(ch => `<option name="${readRange.start.book}${ch}">${ch}</option>`)
-				.join('');
-			$id('chapterSelect').selectedIndex = readRange.start.chapter - 1;
 			$id('prevChapterButton').style.visibility = (readRange.start.chapter > 1)
 				? 'visible' : 'hidden';
-			$id('prevChapterButton').setAttribute('name', readRange.start.book + (readRange.start.chapter - 1));
-			$id('nextChapterButton').style.visibility = (readRange.end.chapter < chapterCount)
+			$id('nextChapterButton').style.visibility = (readRange.end.chapter < books.codeToChapterCount[refRange.start.book])
 				? 'visible' : 'hidden';
-			$id('nextChapterButton').setAttribute('name', readRange.start.book + (readRange.start.chapter + 1));
 		}
 
 		if (!skipFocus) g_bookElem.focus();
@@ -327,28 +470,15 @@ let g_searchPanel, g_resultElem;
 			">
 			<div style="display:flex;">
 				<input id="helpButton" type="button" value="Help">
-				<input id="clearButton" type="button" value="Clear">
 				<textarea id="searchBox" rows="2" style="flex-grow:1;resize:vertical;"></textarea>
 				<input id="searchButton" type="button" value="Search">
 			</div>
 		</div>
 	`);
 
-	let shortcutHelp = `
-		<h3>Shortcuts</h3>
-		<div style="margin-left:2rem;">
-			<table>
-				<tr><td>Focus the reference box</td><td><i>/</i></td></tr>
-				<tr><td>Focus the search box</td><td><i>?</i></td></tr>
-				<tr><td>Perform a search</td><td><i>shift+Enter</i> (when the search box is focused)</td></tr>
-			</table>
-		</div>
-	`;
-
 	let help = `
 		<div style="max-width:600px;">
 			${query.searchHelp}
-			${shortcutHelp}
 		</div>
 	`;
 
@@ -375,11 +505,6 @@ let g_searchPanel, g_resultElem;
 	}
 
 	id('helpButton').addEventListener('click', () => g_resultElem.showHtml(help));
-	id('clearButton').addEventListener('click', () => {
-		g_results = null;
-		g_resultElem.showHtml('');
-		g_bookElem.highlightHits([]);
-	});
 
 	id('searchButton').addEventListener('click', runQuery);
 	id('searchBox').addEventListener('keydown', e => {
@@ -387,17 +512,6 @@ let g_searchPanel, g_resultElem;
 			runQuery();
 			e.stopPropagation();
 			e.preventDefault();
-		}
-	});
-	window.addEventListener('keyup', e => {
-		if (!isEditing() && e.key == '?') {
-			openSearch();
-		}
-	});
-
-	window.addEventListener('click', e => {
-		if (e.target.classList.contains('ref-range')) {
-			read(e.target.innerText, {highlightPassagePermanently: true});	
 		}
 	});
 }
@@ -415,8 +529,8 @@ function openSearch() {
 
 let g_results;
 function runQuery() {
+	g_resultElem.showHtml('searching...');
 	g_results = query.run($id('searchBox').value);
-	if (!g_results) return;
 	g_resultElem.show(g_results);
 	g_bookElem.highlightHits(g_results.hits);
 }
@@ -425,7 +539,55 @@ function isEditing() {
 	return new Set(['INPUT', 'TEXTAREA']).has(document.activeElement.tagName);
 }
 
-onLoad().then(() => {
+function openGoTo() {
+	closePopups();
+	let menuPanel = $id('goToMenuPanel');
+	menuPanel.style.display = '';
+
+	let goToInput = $id('goToInput');
+	goToInput.focus();
+	goToInput.select();
+}
+
+function openAbout() {
+	closePopups();
+
+	g_bookElem.style.display = 'none';
+	$id('intro').innerHTML = settings.about;
+	$id('intro').style.display = '';
+
+	if (!g_isDualPanel) {
+		g_readPanel.style.display = 'flex';
+		g_searchPanel.style.display = 'none';
+	}
+}
+
+function registerPopup(popup) {
+	g_popups.push(popup);
+	popup.addEventListener('click', e => {
+		e.stopPropagation();
+	});
+}
+
+function closePopups() {
+	g_popups.forEach(popup => popup.style.display = 'none');
+}
+
+window.addEventListener('click', e => {
+	closePopups();
+});
+
+window.addEventListener('click', e => {
+	if (e.target.classList.contains('ref-range')) {
+		read(e.target.innerText, {highlightPassagePermanently: true});	
+	} else if (e.target.tagName == 'INTERLINEAR-WORD') {
+		openSearch();
+		$id('searchBox').value = e.target.getAttribute('data-strong');
+		runQuery();
+	}
+});
+
+onLoad.then(() => {
 	document.body.appendChild(g_readPanel);
 	document.body.appendChild(g_searchPanel);
 });

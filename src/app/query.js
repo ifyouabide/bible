@@ -81,11 +81,11 @@ function parseQuery(str) {
 	let matchers = [];
 	for (let and of ands) {
 		let re = new RegExp(and, 'i');
-		matchers.push((unit, tki) => {
+		matchers.push((unit, tki, origTkis) => {
 			if ('word' in unit['tokens'][tki]) {
-				return re.test(unit['tokens'][tki]['word']);
+				if (re.test(unit['tokens'][tki]['word'])) return true;
 			}
-			return false;
+			return origTkis.some(tki => re.test(unit.originalTks[tki]['strong']));
 		});
 	}
 
@@ -130,12 +130,18 @@ function makeUnit(refRange) {
 		if ('word' in bk['tokens'][tki]) wi++;
 	}
 
-	return {
+	let unit = {
 		'code': bk.code,
 		'tokens': bk['tokens'].slice(startTki, endTki),
 		baseTokenIndex: startTki,
 		baseWordIndex: wi,
 	};
+	if (resources.original) {
+		unit.originalTks = resources.original[refRange.start.book]['tokens'];
+		unit.map = resources.bibleToOriginal[refRange.start.book];
+	}
+
+	return unit;
 }
 
 function search(unit, matchers, {pairDist = 30, groupDist = 150} = {}) {
@@ -177,9 +183,19 @@ function runMatchers(unit, matchers) {
 	let hits = [];
 	matchers.forEach(m => hits.push([]));
 	let wi = 0;
+	let mapi = 0;
 	for (let tki = 0; tki < unit['tokens'].length; tki++) {
+		let origTkis = [];
+		if (unit.map) {
+			while (mapi < unit.map.length && unit.map[mapi][0][0] < tki + unit.baseTokenIndex) {
+				mapi++;
+			}
+			if (mapi < unit.map.length && unit.map[mapi][0][0] == tki + unit.baseTokenIndex) {
+				origTkis = unit.map[mapi][1];
+			}
+		}
 		for (let mi in matchers) {
-			if (matchers[mi](unit, tki)) {
+			if (matchers[mi](unit, tki, origTkis)) {
 				hits[mi].push({tokenIndex: tki, wordIndex: wi});
 			}
 		}

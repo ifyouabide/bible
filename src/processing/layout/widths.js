@@ -3,7 +3,7 @@ import {onLoad} from '../../common/utils.js';
 let g_container = document.createElement('div');
 export { g_container as containerElem };
 
-onLoad().then(() => {
+onLoad.then(() => {
 	g_container.style.position = 'fixed';
 	g_container.style.visibility = 'hidden';
 	document.body.appendChild(g_container);

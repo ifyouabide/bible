@@ -3,6 +3,19 @@ import * as refs from '../common/refs.js';
 import {ifDebug, Timer, exportDebug} from '../common/utils.js';
 import * as resources from './resources.js';
 
+/*
+	The faster fixed layout does not work on some user agents:
+		- iPhone 5s, iOS 12.4, Safari 12.1
+		- iPhone X, iOS 13.5, Chrome 84
+
+	It seems setting word-spacing to some specific values or some combination of word-spacing
+	values causes some lines' font sizes to be very large.
+
+	Just use the dynamic layout on iphone and disable interlinear support.
+*/
+export const doesSupportInterlinear = !navigator.userAgent.match(/iPhone/i);
+export const doesSupportFixedLayout = doesSupportInterlinear;
+
 export function createElement({id} = {}) {
 	let elem = document.createElement('div');
 	if (id) elem.setAttribute('id', id);
@@ -12,6 +25,15 @@ export function createElement({id} = {}) {
 	let fixedHighlightsElem = document.createElement('div');
 	fixedHighlightsElem.style.position = 'relative';
 	elem.appendChild(fixedHighlightsElem);
+
+	let interlinearParentElem = document.createElement('div');
+	interlinearParentElem.style.position = 'relative';
+	interlinearParentElem.style.top = '.825rem';
+	elem.appendChild(interlinearParentElem);
+	let interlinearElem = document.createElement('div');
+	interlinearElem.style.position = 'absolute';
+	interlinearElem.style.width = '0px';
+	interlinearParentElem.appendChild(interlinearElem);
 
 	let contentElem = document.createElement('div');
 	elem.appendChild(contentElem);
@@ -24,7 +46,7 @@ export function createElement({id} = {}) {
 		hits: [],
 	};
 
-	elem.show = function(refRange, {scrollToRef} = {}) {
+	elem.show = function(refRange, {scrollToRef, interlinear = false} = {}) {
 		ifDebug(() => {
 			console.log('show', refRange.toString(), scrollToRef ? `scroll: ${scrollToRef}` : '')
 		});
@@ -36,8 +58,8 @@ export function createElement({id} = {}) {
 			contentElem.innerHTML = '<div style="width:2000px;"></div>';
 		}
 		let fixedWidth = contentElem.offsetWidth;
-		if (!render || !render.fixedLayout || fixedWidth != render.width
-				|| !refRange.equals(render.refRange)) {
+		let needsRenderDueToResize = render && render.fixedLayout && fixedWidth != render.width;
+		if (!render || !refRange.equals(render.refRange) || needsRenderDueToResize) {
 			let timer = new Timer();
 
 			let bk = resources.bible[refRange.start.book];
@@ -45,23 +67,38 @@ export function createElement({id} = {}) {
 				? bk['refs'][refRange.end.seek(resources.bible).chapterAndVerse]
 				: bk['tokens'].length;
 			let tkiRange = [bk['refs'][refRange.start.chapterAndVerse], limit];
-			let html = makeFixedLayoutHtml(bk, tkiRange, fixedWidth);
+
+			render = {
+				book: refRange.start.book,
+				refRange: refRange,
+				tkiRange: tkiRange,
+			};
+			let html;
+			if (doesSupportFixedLayout) {
+				let startTkiToLine;
+				[html, startTkiToLine] = makeFixedLayout(bk, tkiRange, fixedWidth);
+				Object.assign(render, {
+					fixedLayout: true,
+					width: fixedWidth,
+					startTkiToLine: startTkiToLine,
+					lineHeight: getContainerLineHeight(elem), 
+				});
+			} else {
+				html = makeDynamicLayoutHtml(bk, tkiRange);
+				Object.assign(render, {
+					dynamicLayout: true,
+				});
+			}
 
 			ifDebug(() => console.log('show [built]', refRange.toString(), timer.mark()));
 			contentElem.innerHTML = html;
 			ifDebug(() => console.log('show [parsed]', refRange.toString(), timer.mark()));
-			render = {
-				book: refRange.start.book,
-				fixedLayout: true,
-				refRange: refRange,
-				tkiRange: tkiRange,
-				width: fixedWidth,
-				lineHeight: getContainerLineHeight(elem),
-			};
+
 			elem.appendChild(spacingElem);
 
 			if (highlight.hits.length) elem.highlightHits(highlight.hits);
 			if (highlight.refRange) elem.highlightPassage(highlight.refRange);
+			if (doesSupportInterlinear && interlinear) showInterlinear();
 		}
 
 		if (scrollToRef) {
@@ -70,10 +107,47 @@ export function createElement({id} = {}) {
 		return true;
 	};
 
-	elem.showTokensAndSurrounding = function(bkCode, tkis, {include = 7} = {}) {
+	elem.setDoShowInterlinear = function(show) {
+		if (!show) {
+			interlinearElem.style.visibility = 'hidden';
+			return;
+		}
+
+		showInterlinear();
+	}
+
+	function showInterlinear() {
+		if (!render) return;
+		if (!resources.onOriginalLoad) return;
+		if (!render.fixedLayout) {
+			throw new Error('Interlinear not supported with dynamic layout');
+		}
+
+		resources.onOriginalLoad.then(() => {
+			if (!render || !render.tkiRange) return;
+			if (!resources.bibleToOriginal[render.book].length) return;
+
+			if (JSON.stringify(render.originalTkiRange) != JSON.stringify(render.tkiRange)) {
+				let interlinearHtml = makeInterlinearFixedLayout(
+					resources.bible[render.book],
+					resources.bibleToOriginal[render.book],
+					resources.original[render.book],
+					contentElem.children,
+					render.startTkiToLine,
+					render.width,
+					render.lineHeight);
+				interlinearElem.innerHTML = interlinearHtml;
+				render.originalTkiRange = render.tkiRange.concat();
+			}
+			interlinearElem.style.visibility = 'visible';
+		});
+	}
+
+	elem.showTokensAndSurrounding = function(bkCode, tkis, {include = 7, maxTkis = 1e10} = {}) {
 		if (!tkis.length) return false;
 
-		let pairs = tkis.sort((a, b) => a - b).map(tki =>
+		let sortedTkis = tkis.sort((a, b) => a - b);
+		let pairs = sortedTkis.slice(0, maxTkis).map(tki =>
 			[
 				bibles.seekTkiByWordCount(resources.bible[bkCode], tki, -include),
 				bibles.seekTkiByWordCount(resources.bible[bkCode], tki, include),
@@ -91,13 +165,17 @@ export function createElement({id} = {}) {
 			}
 		}
 
-		let refRange = refs.RefRange.containingTkis(resources.bible[bkCode], collapsed.flat());
+		let refRange = refs.RefRange.containingTkis(resources.bible[bkCode], [sortedTkis[0], sortedTkis.slice(-1)[0]]);
 		let refRangeHtml = `<a class="ref-range">${refRange}</a>`;
 
+		let notIncludingHtml = '';
+		if (tkis.length > maxTkis) {
+			notIncludingHtml = `<i>not showing ${tkis.length - maxTkis} more hits...</i>`;
+		}
 		contentElem.innerHTML = refRangeHtml + '...' + collapsed
 			.map(p => makeDynamicLayoutHtml(
 				resources.bible[bkCode], p, {headings: false, verseNums: false}))
-			.join('...') + '...';
+			.join('...') + '...' + notIncludingHtml;
 		render = {
 			book: refRange.start.book,
 			dynamicLayout: true,
@@ -278,6 +356,19 @@ function makeDynamicLayoutHtml(
 
 const SPACE_WIDTH = 4.156;
 
+/**
+ * A flow is a layout element (either a block, paragraph, or line).
+ *
+ * Each flow consists of a list of flow tokens. These tokens are mostly the corresponding book
+ * tokens supplemented with width and index information. Also, there are some non-book tokens,
+ * e.g. the verse numbers. Also, space tokens are just converted to ' '.
+ * 
+ * Also, some entire flows may be inferred (e.g. chapter/psalm headings).
+ *
+ * This deviates from common/README.md, in that we automatically create a block per chapter
+ * and merge line blocks into the chapter flow using the || (as the LSV has it).
+ * TODO: Fix.
+ */
 function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} = {}) {
 	if (startTki < 0 || startTki >= bk['tokens'].length) throw new Error('invalid startTki');
 	if (endTki < startTki || endTki > bk['tokens'].length) throw new Error('invalid endTki');
@@ -392,7 +483,9 @@ function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} =
 	return flows;
 }
 
-function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
+// Returns a [html, startTkiToLine]
+function makeFixedLayout(bk, [startTki, endTki], maxLineWidth) {
+	let startTkiToLine = {};
 	let flows = makeFlows(bk, [startTki, endTki]);
 
 	function makeHtml(flow) {
@@ -402,10 +495,11 @@ function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
 			width: 0,
 			spaces: 0,
 			startTki: flow[0].tki,
+			startFi: 0,
 		};
 		let nextAddition;
 
-		function finishLine(skipJustify = false) {
+		function finishLine(endFi, skipJustify = false) {
 			let extraSpacing = 0;
 			if (!skipJustify) {
 				let spaces = (line.spaces - (line.html.endsWith('&nbsp;') ? 1 : 0));
@@ -413,20 +507,22 @@ function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
 				extraSpacing = (maxLineWidth - width) / spaces;
 			}
 			lines.push(
-				`<layout-line data-start-tki="${line.startTki}" style="word-spacing:${extraSpacing.toFixed(2)}px">`
+				`<main-line data-start-tki="${line.startTki}" style="word-spacing:${extraSpacing.toFixed(2)}px">`
 				+ line.html
-				+ '</layout-line>');
+				+ '</main-line>');
+			startTkiToLine[line.startTki] = flow.slice(line.startFi, endFi);
 		}
 
 		function commitNext() {
 			let over = line.width + line.spaces * SPACE_WIDTH + nextAddition.width - maxLineWidth;
 			if (over > line.spaces * .1) {
-				finishLine();
+				finishLine(nextAddition.startFi);
 				line = {
 					html: nextAddition.html,
 					width: nextAddition.width,
 					spaces: 0,
 					startTki: nextAddition.startTki,
+					startFi: nextAddition.startFi,
 				};
 				nextAddition = null;
 			} else {
@@ -436,12 +532,13 @@ function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
 			}
 		}
 
-		for (let f of flow) {
+		for (let fi = 0; fi < flow.length; fi++) {
+			let f = flow[fi];
 			// Consider breaking:
 			// TODO: break on hyphens? (would need to change highlighting too)
 			if (f == ' ' || f.html == '—') {
 				if (nextAddition)
-					commitNext();
+					commitNext(fi);
 			}
 
 			// Add html:
@@ -451,6 +548,7 @@ function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
 						html: '',
 						width: 0,
 						startTki: f.tki,
+						startFi: fi,
 					};
 				}
 				nextAddition.html += f.html;
@@ -465,7 +563,7 @@ function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
 		if (nextAddition)
 			commitNext();
 		if (line.html.length)
-			finishLine(true);
+			finishLine(flow.length, true);
 		return lines.join('');
 	}
 
@@ -478,7 +576,7 @@ function makeFixedLayoutHtml(bk, [startTki, endTki], maxLineWidth) {
 
 		h.push(makeHtml(flow));
 	}
-	return h.join('');
+	return [h.join(''), startTkiToLine];
 }
 
 function getLayoutInLine(bk, lineElem, tki) {
@@ -493,6 +591,160 @@ function getLayoutInLine(bk, lineElem, tki) {
 		.reduce((a, b) => a + b, 0);
 	let width = resources.textToWidth[bk['tokens'][tki]['word']];
 	return [x, width];
+}
+
+function makeInterlinearFixedLayout(
+		mainBk,
+		map,
+		interlinearBk,
+		lineElems,
+		mainStartTkiToLine,
+		maxLineWidth,
+		lineHeight) {
+	let mi = 0;
+	let lang = interlinearBk['tokens'][0]['strong'][0] == 'H' ? 'hebrew' : 'greek';
+	let toPxForLang = (lang == 'hebrew' ? .8125 : .6875);
+
+	function line(flowTokens, extraSpacing) {
+		let mappings = [];
+		{
+			let tkis = flowTokens.filter(ftk => ftk.tki !== undefined);
+			let startTki = tkis[0].tki;
+			let endTki = tkis.slice(-1)[0].tki;
+			while (mi < map.length) {
+				if (map[mi][0][0] >= startTki) {
+					if (map[mi][0][0] > endTki) {
+						break;
+					}
+					mappings.push(map[mi]);
+				}
+				mi++;
+			}
+			if (!mappings.length) {
+				return '<br/>';
+			}
+		}
+
+		let placements = getInterlinearPlacements(
+			interlinearBk,
+			mappings,
+			getTkiToBoundsMap(flowTokens, SPACE_WIDTH, extraSpacing),
+			toPxForLang);
+
+		return `<interlinear-line class="${lang}">`
+			+ placements.map(p => `<interlinear-word style="left:${p.relativeStartPosition}px" data-strong="${p.strong}">${p.text}</interlinear-word>`).join('')
+			+ '</interlinear-line>';
+	}
+
+	let h = [];
+	for (let lineElem of lineElems) {
+		if (lineElem.hasAttribute('data-start-tki')) {
+			let start = lineElem.getAttribute('data-start-tki');
+			h.push(line(mainStartTkiToLine[start], parseFloat(lineElem.style.wordSpacing || 0)));
+		} else {
+			h.push('<br/>');
+		}
+	}
+	return h.join('');
+}
+
+function getInterlinearPlacements(interlinearBk, mappings, mainTkiToBounds, toPxFactor) {
+	let placements = [];
+
+	let spaceWidth = SPACE_WIDTH * toPxFactor;
+	let endPositionOfPrev = 0;
+	let allPrevWidth = 0;
+	for (let mapping of mappings) {
+		let [mainTkis, intTkis] = mapping;
+		let idealMiddlePosition;
+		{
+			let lastIndexOnLine = mainTkis.length - 1;
+			while (!(mainTkis[lastIndexOnLine] in mainTkiToBounds)) {
+				lastIndexOnLine--;
+			}
+			idealMiddlePosition = (mainTkiToBounds[mainTkis[0]][0] + mainTkiToBounds[mainTkis[lastIndexOnLine]][1]) / 2;
+		}
+
+		let layoutTks = intTkis.map(tki => {
+			let tk = interlinearBk['tokens'][tki];
+			let text = getInterlinearText(tk);
+			let width = resources.textToWidth[text] * toPxFactor;
+			if (isNaN(width)) {
+				throw new Error('Unable to determine width of ' + text);
+			}
+			return {
+				tk: tk,
+				text: text,
+				width: width,
+			};
+		});
+		let totalWidth = layoutTks.reduce((a, b) => a + b.width, 0) + spaceWidth * (layoutTks.length - 1);
+		let startPosition = idealMiddlePosition - totalWidth / 2;
+
+		let extraSpaceToPrevious = startPosition - spaceWidth - endPositionOfPrev;
+		if (extraSpaceToPrevious < 0) {
+			// Divide the necessary space between the left and right.
+			let shift = -extraSpaceToPrevious / 2;
+			startPosition += shift;
+			extraSpaceToPrevious = 0;
+
+			// Shift left side further left:
+			for (let pi = placements.length - 1; pi >= 0; pi--) {
+				let p = placements[pi];
+				if (shift <= p.extraSpaceToPrevious || pi == 0) {
+					p.extraSpaceToPrevious -= shift;
+					p.relativeStartPosition -= shift;
+					shift = 0;
+					break;
+				} else {
+					shift -= p.extraSpaceToPrevious;
+					p.relativeStartPosition -= shift;
+					p.extraSpaceToPrevious = 0;
+				}
+			}
+		}
+		endPositionOfPrev = startPosition + totalWidth;
+
+		for (let layoutTk of layoutTks) {
+			placements.push({
+				text: layoutTk.text,
+				strong: layoutTk.tk['strong'],
+				relativeStartPosition: startPosition - allPrevWidth,
+				extraSpaceToPrevious: extraSpaceToPrevious,
+			});
+			extraSpaceToPrevious = 0;
+
+			startPosition += layoutTk.width + spaceWidth;
+			allPrevWidth += layoutTk.width;
+		}
+	}
+
+	return placements;
+}
+
+function getInterlinearText(tk) {
+	let tuple = resources.strongs[tk['strong']];
+	if (tuple) return tuple['lemma'];
+	tuple = resources.strongs[tk['strong'] + 'a'];
+	if (tuple) return tuple['lemma'];
+	return '?';
+}
+
+function getTkiToBoundsMap(flowTokens, spaceWidth, extraWordSpacing) {
+	let tkiToBounds = {};
+	let position = 0;
+	for (let ftk of flowTokens) {
+		if (ftk == ' ') {
+			position += spaceWidth + extraWordSpacing;
+			continue;
+		}
+
+		if (ftk.tki !== undefined)
+			tkiToBounds[ftk.tki] = [position, position + ftk.width];
+
+		if (ftk.width) position += ftk.width;
+	}
+	return tkiToBounds;
 }
 
 function getContainerLineHeight(container) {

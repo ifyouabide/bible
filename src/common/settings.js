@@ -21,6 +21,7 @@ let originalCredits = `
 
 let ifyouabide = {
 	bible: 'lsv',
+	original: 'olsv',
 	bibleLink: 'https://www.lsvbible.com',
 	welcome: 'Welcome to ifyouabide.org',
 	about: `

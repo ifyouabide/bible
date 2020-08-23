@@ -110,4 +110,10 @@ function copy(srcPath, dstPath, substitutions = {}) {
 
 copy(app.favicon, 'favicon.ico');
 cpy(`build/resources/${app.bible}_book_token.json.br`, path.join(outDir, 'resources'));
+if (app.original) {
+	cpy(`build/resources/${app.original}_book_token.json.br`, path.join(outDir, 'resources'));
+	cpy(`build/resources/map_${app.bible}_to_${app.original}_book_token.json.br`, path.join(outDir, 'resources'));
+	cpy(`build/resources/strongs.json.br`, path.join(outDir, 'resources'));
+}
 cpy(`build/resources/layout.json.br`, path.join(outDir, 'resources'));
+cpy(`build/resources/en_bcv_parser.min.js.br`, path.join(outDir, 'resources'));

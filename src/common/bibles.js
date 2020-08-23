@@ -203,5 +203,7 @@ export function seekTkiByWordCount(unit, tki, wc) {
 		tki += Math.sign(wc)) {
 		if ('word' in unit['tokens'][tki]) wc -= Math.sign(wc);
 	}
+	if (tki < 0) return 0;
+	if (tki >= unit['tokens'].length) return unit['tokens'].length - 1;
 	return tki;
 }

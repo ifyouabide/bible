@@ -159,7 +159,7 @@ export class Ref {
 	}
 
 	/**
-	 * Returns a Ref to the next or previous existing verse, or undefined if none exists.
+	 * Returns a Ref to the nearest existing verse.
 	 *
 	 * If this ref's chapter is unspecified, will return the first or last verse of the book
 	 * (depending on asEnd).
@@ -174,7 +174,10 @@ export class Ref {
 		if (this.exists(bible)) return this;
 
 		if (this.chapter == -1) return Ref.withPrefix(bible, this.book, asEnd);
-		if (this.verse == -1) return Ref.withPrefix(bible, this.book + this.chapter + ':', asEnd);
+		if (this.verse == -1) {
+			return Ref.withPrefix(bible, this.book + this.chapter + ':', asEnd)
+				|| Ref.lastWithPrefix(bible, this.book);  // if chapter is past all chapters
+		}
 
 		let bookRefs = bible[this.book]['refs'];
 		if (asEnd) {
@@ -186,7 +189,7 @@ export class Ref {
 				}
 				prevRef = ref;
 			}
-			if (!prevRef) return;
+			if (!prevRef) prevRef = Object.keys(bookRefs)[0];
 			return new Ref(this.book, parseChapter(prevRef), parseVerse(prevRef));
 		} else {
 			let lastV;
@@ -202,6 +205,7 @@ export class Ref {
 					return new Ref(this.book, this.chapter, lastV);
 				}
 			}
+			return Ref.lastWithPrefix(bible, this.book);
 		}
 	}
 

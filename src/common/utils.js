@@ -7,7 +7,7 @@ export function exportDebug(name, value) {
 }
 
 export function setIfUnset(o, key, initialValue) {
-	if (!(key in o)) {
+	if (!o.hasOwnProperty(key)) {
 		o[key] = initialValue;
 	}
 	if (o[key] instanceof Object) {
@@ -26,15 +26,13 @@ export function ifDebug(fn) {
 	if (g_debug) fn();
 }
 
-export function onLoad() {
-	return new Promise(ok => {
-		if (document.readyState === 'interactive' || document.readyState === 'complete') {
-			ok();
-		} else {
-			window.addEventListener('DOMContentLoaded', ok);
-		}
-	});
-}
+export const onLoad = new Promise(ok => {
+	if (document.readyState === 'interactive' || document.readyState === 'complete') {
+		ok();
+	} else {
+		window.addEventListener('DOMContentLoaded', ok);
+	}
+});
 
 export function makeElem(str, wrapTag = undefined) {
 	let parent = document.createElement(wrapTag ? wrapTag : 'div');

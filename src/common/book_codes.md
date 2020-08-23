@@ -2,7 +2,7 @@
 
 See books.js for the data. These codes are derived from the following simple algorithm.
 
-## Algorithm to get code from traditional book name.
+## Algorithm to get code from traditional book name
 
 1. Use the traditional 2-letter codes for the gospel authors.
 
@@ -75,10 +75,13 @@ ZECHARIAH: zc
 MALACHI: ml  
 PHILIPPIANS: pp  
 
-4. Use the following 3 or 4 letter codes for the remaining.
+4. Use the first 3 letters, if unique.
 
 JOSHUA: jos  
 EZRA: ezr  
 JONAH: jon  
+
+5. Use a custom code for Philemon and Jude.
+
 PHILEMON: phm  
 JUDE: jude  

@@ -1,19 +1,25 @@
 import {makeElem, onLoad} from '../../common/utils.js';
 import * as widths from './widths.js'; 
 
-onLoad().then(() => {
-	fetch('../../../build/resources/lsv_book_token.json')
-		.then(response => response.json())
-		.then(bible => {
-			fetch('../../../build/resources/strongs.json')
-				.then(response => response.json())
-				.then(strongs => computeWidths(bible, strongs));
-		});
+onLoad.then(() => {
+	let promises = [];
+	promises.push(fetch('../../../build/resources/lsv_book_token.json')
+		.then(response => response.json()));
+	promises.push(fetch('../../../build/resources/strongs.json')
+		.then(response => response.json()));
+	Promise.all(promises).then(([b1, strongs]) => {
+		window.setTimeout(() => {  // wait for fonts to load
+			computeWidths(b1, strongs);
+		}, 5000);
+	});
 });
 
 function computeWidths(bible, strongs) {
 	let textToWidth = {};
-	let params = {fontSize: '16px', fontFamily: 'Open Sans', iterations: 10};
+	let englishParams = {fontSize: '16px', fontFamily: 'Open Sans', iterations: 10};
+	let greekParams = {fontSize: '16px', fontFamily: 'Source Sans Pro', iterations: 10};
+	let hebrewParams = {fontSize: '16px', fontFamily: 'Cardo', iterations: 10};
+
 	for (let bk of Object.values(bible)) {
 		let tokens = bk['tokens'];
 		for (let tki = 0; tki < tokens.length; tki++) {
@@ -25,18 +31,22 @@ function computeWidths(bible, strongs) {
 				writable = tk['punctuation'];
 			}
 			if (writable && (!(writable in textToWidth) || writable == 'constructor')) {
+				let strong = tk['strong'];
+				let params;
+				if (strong) {
+					params = strong[0] == 'G' ? greekParams : hebrewParams;
+				} else {
+					params = englishParams;
+				}
 				textToWidth[writable] = () => widths.getWidth(writable, params);
 			}
 		}
 	}
 	for (let writable of ['[', ']'].concat(Array.from(Array(200), (_, i) => '' + i))) {
-		textToWidth[writable] = () => widths.getWidth(writable, params);
+		textToWidth[writable] = () => widths.getWidth(writable, englishParams);
 	}
-	for (let [strong, obj] of Object.entries(strongs)) {
-		textToWidth[strong] = () => widths.getWidth(
-			obj['lemma'],
-			Object.assign(
-				{}, params, {fontFamily: strong[0] == 'G' ? 'Open Sans' : 'Rubik'}));
+	for (let [strong, tuple] of Object.entries(strongs)) {
+		textToWidth[tuple['lemma']] = () => widths.getWidth(tuple['lemma'], strong[0] == 'G' ? greekParams : hebrewParams);
 	}
 
 	function finish() {
