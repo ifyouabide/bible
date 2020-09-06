@@ -4,12 +4,14 @@ A free, fast, minimalist, and open source web-based tool for reading/searching t
 
 ## Development
 
-Download the source. Install nodejs (v14.5+). Then, in the source dir:
+Download the source. Install nodejs (v14.5+) and node's npm package manager. Then, in the source dir:
+
+`npm install`
 
 `npm run build`
-
-then:
 
 `npm run serve`
 
 Then load the app at http://localhost:8000
+
+Note, the build step takes awhile (few minutes) because of Brotli compression.
