@@ -36,23 +36,41 @@ const Type = {
 	unknown: 0,
 	punctuation: 1,
 	layout: 2,
+	wordContinuation: 3,
 };
 const CHAR_TO_TYPE = new Uint8Array(10000);
 PUNCTUATION_CHARS.forEach(c => CHAR_TO_TYPE[c.codePointAt(0)] = Type.punctuation);
 LAYOUT_CHARS.forEach(c => CHAR_TO_TYPE[c.codePointAt(0)] = Type.layout);
+CHAR_TO_TYPE['\b'.codePointAt(0)] = Type.wordContinuation;
 
 const SPACE_TOKEN = {'layout': 'space'};
-const NEW_LINE0_TOKEN = {'layout': {'newLine': 0}};
-const LAYOUT_KEY_TO_TOKEN = {
-	'\n0': NEW_LINE0_TOKEN,
+const NEW_LINE_TOKENS = Array.from(Array(10), (_, i) => { return {'layout': {'newLine': i}}; });
+const NEW_BLOCK_TOKENS = [0].map(i => { return {'layout': {'newBlock': i}}; });
+const NEW_PARAGRAPH_TOKENS = [0].map(i => { return {'layout': {'newParagraph': i}}; });
+const LAYOUT_KEY_TO_TOKENS = {
+	'\n': NEW_LINE_TOKENS,
+	'\r': NEW_BLOCK_TOKENS,
+	'\f': NEW_PARAGRAPH_TOKENS,
 };
 
-function isInWord(c, prev) {
-	if (!CHAR_TO_TYPE[c.codePointAt(0)]) return true;
-
-	// Hyphens and apostrophes can be in a word. Check for them.
-	if (!prev) return false;
-	return !CHAR_TO_TYPE[prev.codePointAt(0)] && (c == '-' || c == '\'' || c == '’');
+function consumeWord(text, indexRef) {
+	let start = indexRef.i;
+	indexRef.i++;
+	while (indexRef.i < text.length) {
+		let c = text[indexRef.i];
+		if (!CHAR_TO_TYPE[c.codePointAt(0)]) {
+		} else if (c == '-' || c == '\'' || c == '’') {
+			let nextC = text[indexRef.i+1];
+			if (!nextC || (CHAR_TO_TYPE[nextC.codePointAt(0)] && nextC != '\b'))
+				break;
+		} else if (c == '\b') {
+			return {'word': text.slice(start, indexRef.i)};
+		} else {
+			break;
+		}
+		indexRef.i++;
+	}
+	return {'word': text.slice(start, indexRef.i--)};
 }
 
 function convertNonWord(text, indexRef = {i: 0}) {
@@ -65,7 +83,10 @@ function convertNonWord(text, indexRef = {i: 0}) {
 		while (text[indexRef.i+count+1] == '\t')
 			count++;
 		indexRef.i += count;
-		return LAYOUT_KEY_TO_TOKEN[c + count];
+
+		let obj = LAYOUT_KEY_TO_TOKENS[c][count];
+		if (!obj) throw new Error('Bad layout: '  + c + ' ' + count);
+		return obj;
 	} else {
 		throw new Error('Unknown character: ' + c);
 	}
@@ -76,14 +97,10 @@ export function textToTokens(text, {tokens = [], modifiable = false} = {}) {
 	let word = '';
 	for (let indexRef = {i: 0}; indexRef.i < text.length; indexRef.i++) {
 		let c = text[indexRef.i];
-		let prev = indexRef.i > 0 ? text[indexRef.i-1] : null;
-		let inWord = isInWord(c, prev);
-		if (inWord) {
-			word += c;
-		} else {
-			if (word.length) tokens.push({'word': word});
-			word = '';
 
+		if (!CHAR_TO_TYPE[c.codePointAt(0)]) {
+			tokens.push(consumeWord(text, indexRef));
+		} else {
 			let nonWord = convertNonWord(text, indexRef);
 			if (modifiable) {
 				tokens.push(Object.assign({}, nonWord));
@@ -92,7 +109,6 @@ export function textToTokens(text, {tokens = [], modifiable = false} = {}) {
 			}
 		}
 	}
-	if (word.length) tokens.push({'word': word});
 	return tokens;
 }
 

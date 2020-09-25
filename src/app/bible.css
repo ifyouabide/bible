@@ -21,6 +21,10 @@ end-of-chapter {
 	min-width: .6rem;
 	min-height: .6rem;
 }
+paragraph-indent {
+	display: inline-block;
+	min-width: 25px;
+}
 line-break {
 	letter-spacing: -.4em;
 	padding-right: .4em;

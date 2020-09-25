@@ -369,7 +369,7 @@ const SPACE_WIDTH = 4.156;
  * and merge line blocks into the chapter flow using the || (as the LSV has it).
  * TODO: Fix.
  */
-function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} = {}) {
+function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true, ceasura = true} = {}) {
 	if (startTki < 0 || startTki >= bk['tokens'].length) throw new Error('invalid startTki');
 	if (endTki < startTki || endTki > bk['tokens'].length) throw new Error('invalid endTki');
 
@@ -383,15 +383,23 @@ function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} =
 	ri--;
 
 	let isPsalm = bk['code'] == 'ps';
-	let flow = [];
-	let flows = [flow];
+	let flow;
+	let flows = [];
+
+	function makeFlow(type) {
+		flow = [];
+		flow.type = type;
+		flows.push(flow);
+	}
 
 	for (let tki = startTki; tki < endTki; tki++) {
-		if (ri < bkRefs.length - 1 && tki == bkRefs[ri+1][1]) {
+		let isNewVerse = ri < bkRefs.length - 1 && tki == bkRefs[ri+1][1];
+		let ref;
+		if (isNewVerse) {
 			ri++;
-			let ref = refs.parse(bk['code'] + bkRefs[ri][0]);
+			ref = refs.parse(bk['code'] + bkRefs[ri][0]);
 
-			// Start of chapter/psalm:
+			// If this is the start of chapter/psalm:
 			if (ri == 0 || ref.chapter != refs.parseChapter(bkRefs[ri-1][0])) {
 				if (ref.chapter != 1 && tki != startTki) {
 					flow.push({
@@ -400,62 +408,69 @@ function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} =
 					});
 				}
 
-				if (flow.length == 0)
-					flows.pop();
-
 				if (headings) {
 					if (tki != startTki) flows.push('<div>&nbsp;</div>');
+
 					if (isPsalm)
 						flows.push(`<psalm-num>PSALM ${ref.chapter}</psalm-num>`);
 					else
 						flows.push(`<chapter-num>CHAPTER ${ref.chapter}</chapter-num>`);
-				}
 
-				flow = [];
-				flows.push(flow);
+					flow = null;
+				}
+			}
+		}
+
+		let tk = bk['tokens'][tki];
+		let layout = tk['layout'];
+		if (typeof(layout) == 'object') {
+			if ('newLine' in layout && !ceasura) {
+				makeFlow('line');
+			} else if ('newParagraph' in layout) {
+				makeFlow('block');
+				flow.push({
+					html: '<paragraph-indent></paragraph-indent>',
+					width: 25,
+					tki: tki,
+				})
+			} else if ('newBlock' in layout) {
+				makeFlow('block');
 			}
 
-			// Start of verse:
-			if (verseNums) {
-				if (isPsalm) {
-					if (ref.verse == 0) {
-						flow.push({
-							html: `<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek(resources.bible)}">1</verse-num>`,
-							width: resources.textToWidth[1] * .8 + 1.6,
-							tki: tki,
-						});
-					} else if (ref.verse != 1 || ri == 0 || refs.parseVerse(bkRefs[ri-1][0]) != 0) {
-						flow.push({
-							html: `<verse-num name="${ref}">${ref.verse}</verse-num>`,
-							width: resources.textToWidth[ref.verse] * .7 + 1.6,
-							tki: tki,
-						});
-					}
-				} else {
+			if (!ceasura) flow.indent = Object.values(layout)[0];
+		}
+
+		// Needed when starting mid-verse or when a heading breaks a flow.
+		if (!flow) makeFlow('block');
+
+		if (isNewVerse && verseNums) {
+			if (isPsalm) {
+				if (ref.verse == 0) {
+					flow.push({
+						html: `<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek(resources.bible)}">1</verse-num>`,
+						width: resources.textToWidth[1] * .8 + 1.6,
+						tki: tki,
+					});
+				} else if (ref.verse != 1 || ri == 0 || refs.parseVerse(bkRefs[ri-1][0]) != 0) {
 					flow.push({
 						html: `<verse-num name="${ref}">${ref.verse}</verse-num>`,
 						width: resources.textToWidth[ref.verse] * .7 + 1.6,
 						tki: tki,
 					});
 				}
+			} else {
+				flow.push({
+					html: `<verse-num name="${ref}">${ref.verse}</verse-num>`,
+					width: resources.textToWidth[ref.verse] * .7 + 1.6,
+					tki: tki,
+				});
 			}
 		}
 
-		let tk = bk['tokens'][tki];
-		let word = tk['word'];
-		if (word) {
-			flow.push({
-				html: word,
-				width: resources.textToWidth[word],
-				tki: tki,
-			});
-			continue;
-		}
-		let layout = tk['layout'];
 		if (layout) {
-			if (tk['layout'] == 'space') {
+			if (layout == 'space') {
 				flow.push(' ');
-			} else if ('newLine' in tk['layout']) {
+			} else if (ceasura && 'newLine' in layout) {
 				flow.push(' ');
 				flow.push({
 					html: '<line-break>||</line-break>',
@@ -464,6 +479,16 @@ function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true} =
 				});
 				flow.push(' ');
 			}
+			continue;
+		}
+		
+		let word = tk['word'];
+		if (word) {
+			flow.push({
+				html: word,
+				width: resources.textToWidth[word],
+				tki: tki,
+			});
 			continue;
 		}
 		let punc = tk['punctuation'];
@@ -489,6 +514,8 @@ function makeFixedLayout(bk, [startTki, endTki], maxLineWidth) {
 	let flows = makeFlows(bk, [startTki, endTki]);
 
 	function makeHtml(flow) {
+		if (!flow.length) return '<div>&nbsp;</div>';
+
 		let lines = [];
 		let line = {
 			html: '',
@@ -498,23 +525,24 @@ function makeFixedLayout(bk, [startTki, endTki], maxLineWidth) {
 			startFi: 0,
 		};
 		let nextAddition;
+		let indent = (flow.indent || 0) * 25;
 
 		function finishLine(endFi, skipJustify = false) {
 			let extraSpacing = 0;
 			if (!skipJustify) {
 				let spaces = (line.spaces - (line.html.endsWith('&nbsp;') ? 1 : 0));
-				let width = line.width + spaces * SPACE_WIDTH;
+				let width = indent + line.width + spaces * SPACE_WIDTH;
 				extraSpacing = (maxLineWidth - width) / spaces;
 			}
 			lines.push(
-				`<main-line data-start-tki="${line.startTki}" style="word-spacing:${extraSpacing.toFixed(2)}px">`
+				`<main-line data-start-tki="${line.startTki}" style="word-spacing:${extraSpacing.toFixed(2)}px;padding-left:${indent}px">`
 				+ line.html
 				+ '</main-line>');
 			startTkiToLine[line.startTki] = flow.slice(line.startFi, endFi);
 		}
 
 		function commitNext() {
-			let over = line.width + line.spaces * SPACE_WIDTH + nextAddition.width - maxLineWidth;
+			let over = indent + line.width + line.spaces * SPACE_WIDTH + nextAddition.width - maxLineWidth;
 			if (over > line.spaces * .1) {
 				finishLine(nextAddition.startFi);
 				line = {
@@ -569,7 +597,7 @@ function makeFixedLayout(bk, [startTki, endTki], maxLineWidth) {
 
 	let h = [];
 	for (let flow of flows) {
-		if (typeof(flow) == 'string') {  // header
+		if (typeof(flow) == 'string') {  // raw HTML (e.g. headers)
 			h.push(flow);
 			continue;
 		}
@@ -604,11 +632,14 @@ function makeInterlinearFixedLayout(
 	let mi = 0;
 	let lang = interlinearBk['tokens'][0]['strong'][0] == 'H' ? 'hebrew' : 'greek';
 	let toPxForLang = (lang == 'hebrew' ? .8125 : .6875);
+	let isRtl = lang == 'hebrew';
 
-	function line(flowTokens, extraSpacing) {
+	function line(flowTokens, extraSpacing, indent) {
 		let mappings = [];
 		{
 			let tkis = flowTokens.filter(ftk => ftk.tki !== undefined);
+			if (!tkis.length) return '<br/>';
+
 			let startTki = tkis[0].tki;
 			let endTki = tkis.slice(-1)[0].tki;
 			while (mi < map.length) {
@@ -628,11 +659,13 @@ function makeInterlinearFixedLayout(
 		let placements = getInterlinearPlacements(
 			interlinearBk,
 			mappings,
-			getTkiToBoundsMap(flowTokens, SPACE_WIDTH, extraSpacing),
+			getTkiToBoundsMap(flowTokens, SPACE_WIDTH, extraSpacing, indent),
 			toPxForLang);
 
+		let intWords = placements.map(p => `<interlinear-word style="left:${p.relativeStartPosition}px" data-strong="${p.strong}">${p.text}</interlinear-word>`);
+		if (isRtl) intWords.reverse();
 		return `<interlinear-line class="${lang}">`
-			+ placements.map(p => `<interlinear-word style="left:${p.relativeStartPosition}px" data-strong="${p.strong}">${p.text}</interlinear-word>`).join('')
+			+ intWords.join('')
 			+ '</interlinear-line>';
 	}
 
@@ -640,7 +673,7 @@ function makeInterlinearFixedLayout(
 	for (let lineElem of lineElems) {
 		if (lineElem.hasAttribute('data-start-tki')) {
 			let start = lineElem.getAttribute('data-start-tki');
-			h.push(line(mainStartTkiToLine[start], parseFloat(lineElem.style.wordSpacing || 0)));
+			h.push(line(mainStartTkiToLine[start], parseFloat(lineElem.style.wordSpacing || 0), parseFloat(lineElem.style.paddingLeft || 0)));
 		} else {
 			h.push('<br/>');
 		}
@@ -660,6 +693,9 @@ function getInterlinearPlacements(interlinearBk, mappings, mainTkiToBounds, toPx
 		{
 			let lastIndexOnLine = mainTkis.length - 1;
 			while (!(mainTkis[lastIndexOnLine] in mainTkiToBounds)) {
+				if (lastIndexOnLine == 0) {
+					throw new Error('Unable to add interlinear word because it is associated with missing main word');
+				}
 				lastIndexOnLine--;
 			}
 			idealMiddlePosition = (mainTkiToBounds[mainTkis[0]][0] + mainTkiToBounds[mainTkis[lastIndexOnLine]][1]) / 2;
@@ -668,7 +704,7 @@ function getInterlinearPlacements(interlinearBk, mappings, mainTkiToBounds, toPx
 		let layoutTks = intTkis.map(tki => {
 			let tk = interlinearBk['tokens'][tki];
 			let text = getInterlinearText(tk);
-			let width = resources.textToWidth[text] * toPxFactor;
+			let width = (text == UNKNOWN_ORIGINAL ? 25 : resources.textToWidth[text]) * toPxFactor;
 			if (isNaN(width)) {
 				throw new Error('Unable to determine width of ' + text);
 			}
@@ -722,17 +758,21 @@ function getInterlinearPlacements(interlinearBk, mappings, mainTkiToBounds, toPx
 	return placements;
 }
 
+// A question mark by itself will disrupt the RTL flow. Not sure why.
+// It works surrounding it by colons.
+const UNKNOWN_ORIGINAL = ':?:';
+
 function getInterlinearText(tk) {
 	let tuple = resources.strongs[tk['strong']];
 	if (tuple) return tuple['lemma'];
 	tuple = resources.strongs[tk['strong'] + 'a'];
 	if (tuple) return tuple['lemma'];
-	return '?';
+	return UNKNOWN_ORIGINAL;
 }
 
-function getTkiToBoundsMap(flowTokens, spaceWidth, extraWordSpacing) {
+function getTkiToBoundsMap(flowTokens, spaceWidth, extraWordSpacing, indent) {
 	let tkiToBounds = {};
-	let position = 0;
+	let position = indent;
 	for (let ftk of flowTokens) {
 		if (ftk == ' ') {
 			position += spaceWidth + extraWordSpacing;

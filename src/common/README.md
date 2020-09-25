@@ -36,8 +36,9 @@ Tokens have a simple JSON representation, e.g.:
 Tokens also have a simple text representation, using the following rules:
 
 * punctuation is defined as one of the following characters: …,;:.?!-—'‘’"“”(){}[]
-* a word is a sequence of characters containing non-punctuation or -'’ preceded by
-  non-punctuation (this could be improved)
+* a word is a sequence of non-punctuation characters; instances of *-'’* may be present, if surrounded
+  by non-punctuation characters on both sides; *'’* at the end will be considered part of the word
+  if followed by \b (this could be improved)
 * for layout:
   * the space character ' ' is used for a space token
   * for layout flows:
