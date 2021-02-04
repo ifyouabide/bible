@@ -6,7 +6,7 @@ Copyright © 2020 by Covenant Press of the Covenant Christian Coalition (www.ccc
 From:
 | File | Source |
 | --- | --- |
-| The Holy Bible (LSV).pdf | Supplied by the LSV team |
+| The Holy Bible (LSV).pdf | Supplied by the LSV team (latest update at Feb 4th 2021) |
 | lsv_raw.txt | The above PDF (pages 11 - 764) was converted to HTML (using pdf2htmlex), after which the text was extracted via JS |
 | lsv.txt | Some manual non-content changes (remove page between OT/NT, add ===== for book dividers, remove page numbers/dividers, add trailing space for 5 lines without such) |
 | favicon.ico | https://www.lsvbible.com/favicon.ico |

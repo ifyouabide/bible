@@ -240,7 +240,7 @@ let g_readPanel, g_bookElem;
 			nextChButton,
 			prevChButton,
 			makeElem('<hr>'));
-		if (bibleUi.doesSupportInterlinear) {
+		if (settings.original && bibleUi.doesSupportInterlinear) {
 			let interlinearSelect = makeElem(`
 				<select style="font-size:.7rem;margin-right:1rem;">
 					<option>None</option>
