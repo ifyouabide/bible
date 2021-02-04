@@ -301,20 +301,30 @@ let g_readPanel, g_bookElem;
 				g_bookElem.focus();
 			}
 		});
+		function goToRef(refStr) {
+			let specificVerse = refs.parse(refStr).verse != -1;
+			read(refStr, {skipFocus: true, highlightPassageTemporarily: specificVerse});
+		}
 		function goTo(str) {
-			let parser = new bcv_parser();
-			parser.set_options({
-				'versification_system': 'kjv',
-				'passage_existence_strategy': 'b',
-				'book_alone_strategy': 'first_chapter',
-			});
-			parser.parse(str);
-			let osisRef = parser.osis();
-			if (osisRef) {
-				let osisBk = osisRef.split('.', 1)[0];
-				let ref = books.osisToCode[osisBk] + osisRef.slice(osisBk.length + 1).replace('.', ':');
-				let specificVerse = refs.parse(ref).verse != -1;
-				read(ref, {skipFocus: true, highlightPassageTemporarily: specificVerse});
+			let refStr;
+			if (refs.parse(str)) {
+				refStr = str;
+			} else {
+				let parser = new bcv_parser();
+				parser.set_options({
+					'versification_system': 'kjv',
+					'passage_existence_strategy': 'b',
+					'book_alone_strategy': 'first_chapter',
+				});
+				parser.parse(str);
+				let osisRef = parser.osis();
+				if (osisRef) {
+					let osisBk = osisRef.split('.', 1)[0];
+					refStr = books.osisToCode[osisBk] + osisRef.slice(osisBk.length + 1).replace('.', ':');
+				}
+			}
+			if (refStr) {
+				goToRef(refStr);
 			}
 		}
 	}

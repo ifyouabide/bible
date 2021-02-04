@@ -54,10 +54,12 @@ export function createElement({id} = {}) {
 		if (!refRange.isWithinSingleBook() || !refRange.exists(resources.bible)) return false;
 		if (scrollToRef && !scrollToRef.exists(resources.bible)) return false;
 
-		if (!render || !render.fixedLayout) {
+		if (!render) {
 			contentElem.innerHTML = '<div style="width:2000px;"></div>';
 		}
 		let fixedWidth = contentElem.offsetWidth;
+		if (fixedWidth == 0) return;
+
 		let needsRenderDueToResize = render && render.fixedLayout && fixedWidth != render.width;
 		if (!render || !refRange.equals(render.refRange) || needsRenderDueToResize) {
 			let timer = new Timer();
@@ -133,9 +135,7 @@ export function createElement({id} = {}) {
 					resources.bibleToOriginal[render.book],
 					resources.original[render.book],
 					contentElem.children,
-					render.startTkiToLine,
-					render.width,
-					render.lineHeight);
+					render.startTkiToLine);
 				interlinearElem.innerHTML = interlinearHtml;
 				render.originalTkiRange = render.tkiRange.concat();
 			}
@@ -325,7 +325,7 @@ function makeDynamicLayoutHtml(
 			if (verseNums) {
 				if (isPsalm) {
 					if (ref.verse == 0) {
-						h.push(`<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek()}">1</verse-num>`);
+						h.push(`<verse-num name="${ref}"></verse-num><verse-num name="${ref.seek(resources.bible)}">1</verse-num>`);
 					} else if (ref.verse != 1 || ri == 0 || refs.parseVerse(bkRefs[ri-1][0]) != 0) {
 						h.push(`<verse-num name="${ref}">${ref.verse}</verse-num>`);
 					}
@@ -509,7 +509,7 @@ function makeFlows(bk, [startTki, endTki], {headings = true, verseNums = true, c
 }
 
 // Returns a [html, startTkiToLine]
-function makeFixedLayout(bk, [startTki, endTki], maxLineWidth) {
+export function makeFixedLayout(bk, [startTki, endTki], maxLineWidth) {
 	let startTkiToLine = {};
 	let flows = makeFlows(bk, [startTki, endTki]);
 
@@ -626,9 +626,7 @@ function makeInterlinearFixedLayout(
 		map,
 		interlinearBk,
 		lineElems,
-		mainStartTkiToLine,
-		maxLineWidth,
-		lineHeight) {
+		mainStartTkiToLine) {
 	let mi = 0;
 	let lang = interlinearBk['tokens'][0]['strong'][0] == 'H' ? 'hebrew' : 'greek';
 	let toPxForLang = (lang == 'hebrew' ? .8125 : .6875);
@@ -801,6 +799,9 @@ function getContainerLineHeight(container) {
 }
 
 function scrollTo(elem, childElem) {
+	// Don't scroll if the container is not visible.
+	if (elem.offsetHeight == 0) return;
+
 	var lineHeight = getContainerLineHeight(elem);
 	var fontSize = parseInt(getComputedStyle(elem).fontSize);
 	var space = (lineHeight - fontSize) / 2;
