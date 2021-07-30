@@ -51,7 +51,7 @@ Tokens also have a simple text representation, using the following rules:
 ## Bible Formats
 
 There are a few main formats:
-  * verse text: a map of book codes to books, with each being a map of chapter:verse to text 
+  * verse text: a map of book codes to books, with each being a map of chapter:verse to tokens (in text representation)
   * verse token: a map of book codes to books, with each being a map of chapter:verse to tokens
   * book token: a map of book codes to books, with each having a list of tokens and map of
     chapter:verse to starting token index
@@ -67,7 +67,7 @@ E.g., in JSON:
   },
   // ...
 }
-````
+```
 
 ### Verse Token
 ```js
@@ -83,7 +83,7 @@ E.g., in JSON:
   },
   // ...
 }
-````
+```
 
 ### Book Token
 ```js
@@ -102,7 +102,7 @@ E.g., in JSON:
   },
   // ...
 }
-````
+```
 
 ### Bible Map
 
