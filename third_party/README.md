@@ -5,6 +5,8 @@ and permissively licensed.
 
 https://hackathon.bible/data/ has a lot of good pointers.
 
+https://ebible.org/bible/details.php?id=engkjv&all=1 may be useful too.
+
 ## Excluded Resources
 
 Some considered, but non-qualifying resources include:
