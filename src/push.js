@@ -8,7 +8,7 @@ let bucket = {
 	ifyouabide: 'ifyouabide.org',
 	lsvbible: 'lsvbible',
 }[appName];
-let version = '6';
+let version = '7';
 
 function cp(local, remote) {
 	let headers = [];
